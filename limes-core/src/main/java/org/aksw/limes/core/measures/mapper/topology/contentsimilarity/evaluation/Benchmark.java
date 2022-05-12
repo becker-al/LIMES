@@ -1,6 +1,7 @@
 package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation;
 
 import org.aksw.limes.core.datastrutures.GoldStandard;
+import org.aksw.limes.core.evaluation.qualititativeMeasures.APRF;
 import org.aksw.limes.core.evaluation.qualititativeMeasures.FMeasure;
 import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
@@ -61,10 +62,14 @@ public class Benchmark {
         Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
         Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
 
-        results.add(relation + ",Algo,Time,Precision,Recall,F");
+        results.add(relation + ",Algo,Time,Precision,Recall,F,TP,FP,TN,FN"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
         FMeasure fMeasure = new FMeasure();
 
         AMapping radon = RADON.getMapping(sourceMap, targetMap, relation);
+        GoldStandard goldStandard = new GoldStandard(radon);
+        goldStandard.sourceUris = sourceWithoutSimplification.getAllUris();
+        goldStandard.targetUris = targetWithoutSimplification.getAllUris();
+
         for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
             System.out.println("------------------");
             System.out.println(geoMapperEntry.getKey());
@@ -74,13 +79,21 @@ public class Benchmark {
             long time = end - start;
             System.out.println("Time: " + time);
 
-            double precision = fMeasure.precision(mapping, new GoldStandard(radon));
+            double precision = fMeasure.precision(mapping, goldStandard);
             System.out.println("Precision:" + precision);
-            double recall = fMeasure.recall(mapping, new GoldStandard(radon));
+            double recall = fMeasure.recall(mapping, goldStandard);
             System.out.println("Recall:" + recall);
-            double f = fMeasure.calculate(mapping, new GoldStandard(radon));
+            double f = fMeasure.calculate(mapping, goldStandard);
             System.out.println("F:" + f);
-            results.add("," + geoMapperEntry.getKey() + "," + time + "," + precision + "," + recall + "," + f);
+
+
+            double tp = APRF.trueFalsePositive(mapping, radon, true);
+            double fp = APRF.trueFalsePositive(mapping, radon, false);
+            double tn = APRF.trueNegative(mapping, goldStandard);
+            double fn = APRF.falseNegative(mapping, radon);
+
+
+            results.add(String.join(",", "", geoMapperEntry.getKey(), time + "", precision + "", recall + "", f+ "", tp+"", fp+"", tn+"", fn+""));
         }
         results.add("");
     }
