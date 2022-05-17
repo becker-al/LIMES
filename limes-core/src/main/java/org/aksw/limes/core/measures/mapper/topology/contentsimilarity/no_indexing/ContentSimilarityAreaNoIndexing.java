@@ -230,7 +230,6 @@ public class ContentSimilarityAreaNoIndexing {
         ExecutorService mergerExec = Executors.newFixedThreadPool(1);
         AMapping m = MappingFactory.createDefaultMapping();
         List<Map<String, Set<String>>> results = Collections.synchronizedList(new ArrayList<>());
-        Map<String, Set<String>> computed = new HashMap<>();
         Matcher matcher = new Matcher(rel, results);
 
         for (Map.Entry<String, Geometry> sourceEntry : sourceData.entrySet()) {

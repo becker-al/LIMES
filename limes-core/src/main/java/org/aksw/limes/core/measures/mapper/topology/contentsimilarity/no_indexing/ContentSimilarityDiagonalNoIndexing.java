@@ -165,7 +165,7 @@ public class ContentSimilarityDiagonalNoIndexing {
     // best measure according to our evaluation in the RADON paper
     public static String heuristicStatMeasure = "avg";
 
-    private static final Logger logger = Logger.getLogger(ContentSimilarityAreaNoIndexing.class);
+    private static final Logger logger = Logger.getLogger(ContentSimilarityDiagonalNoIndexing.class);
 
     public static Map<String, Geometry> getGeometryMapFromCache(ACache c, String property) {
         WKTReader wktReader = new WKTReader();
@@ -229,22 +229,21 @@ public class ContentSimilarityDiagonalNoIndexing {
         ExecutorService mergerExec = Executors.newFixedThreadPool(1);
         AMapping m = MappingFactory.createDefaultMapping();
         List<Map<String, Set<String>>> results = Collections.synchronizedList(new ArrayList<>());
-        Map<String, Set<String>> computed = new HashMap<>();
-        ContentSimilarityAreaNoIndexing.Matcher matcher = new ContentSimilarityAreaNoIndexing.Matcher(rel, results);
+        Matcher matcher = new Matcher(rel, results);
 
         for (Map.Entry<String, Geometry> sourceEntry : sourceData.entrySet()) {
             for (Map.Entry<String, Geometry> targetEntry : targetData.entrySet()) {
                 if (numThreads == 1) {
-                    if (ContentSimilarityAreaNoIndexing.Matcher.relate(sourceEntry.getValue(), targetEntry.getValue(), rel)) {
+                    if (Matcher.relate(sourceEntry.getValue(), targetEntry.getValue(), rel)) {
                         m.add(sourceEntry.getKey(), targetEntry.getKey(), 1.0);
                     }
                 } else {
                     matcher.schedule(sourceEntry, targetEntry);
-                    if (matcher.size() == ContentSimilarityAreaNoIndexing.Matcher.maxSize) {
+                    if (matcher.size() == Matcher.maxSize) {
                         matchExec.execute(matcher);
-                        matcher = new ContentSimilarityAreaNoIndexing.Matcher(rel, results);
+                        matcher = new Matcher(rel, results);
                         if (results.size() > 0) {
-                            mergerExec.execute(new ContentSimilarityAreaNoIndexing.Merger(results, m));
+                            mergerExec.execute(new Merger(results, m));
                         }
                     }
                 }
@@ -259,7 +258,7 @@ public class ContentSimilarityDiagonalNoIndexing {
             while (!matchExec.isTerminated()) {
                 try {
                     if (results.size() > 0) {
-                        mergerExec.execute(new ContentSimilarityAreaNoIndexing.Merger(results, m));
+                        mergerExec.execute(new Merger(results, m));
                     }
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -267,7 +266,7 @@ public class ContentSimilarityDiagonalNoIndexing {
                 }
             }
             if (results.size() > 0) {
-                mergerExec.execute(new ContentSimilarityAreaNoIndexing.Merger(results, m));
+                mergerExec.execute(new Merger(results, m));
             }
             mergerExec.shutdown();
             while (!mergerExec.isTerminated()) {
