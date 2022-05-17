@@ -41,12 +41,17 @@ public class Benchmark {
         ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(nuts);
         ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(nuts);
 
-        Map<String, GeoMapper> geoMapperMap = new HashMap<>();
+        Map<String, GeoMapper> geoMapperMap = new LinkedHashMap<>();
+        geoMapperMap.put("RADON", new RadonWrapper());
+
         geoMapperMap.put("FA", new FAWrapper());
         geoMapperMap.put("FD", new FDWrapper());
         geoMapperMap.put("FM", new FMWrapper());
-        geoMapperMap.put("RADON", new RadonWrapper());
 
+        geoMapperMap.put("FA_NoIndexing", new FANoIndexingWrapper());
+        geoMapperMap.put("FD_NoIndexing", new FDNoIndexingWrapper());
+        geoMapperMap.put("FM_NoIndexing", new FMNoIndexingWrapper());
+        
         int numThreads = 1;
 
         List<String> results = new ArrayList<>();
@@ -75,7 +80,7 @@ public class Benchmark {
 
         for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
             System.out.println("------------------");
-            System.out.println(geoMapperEntry.getKey());
+            System.out.println(geoMapperEntry.getKey() + " | " + relation);
             long start = System.currentTimeMillis();
             AMapping mapping = geoMapperEntry.getValue().getMapping(sourceMap, targetMap, relation, numThreads);
             long end = System.currentTimeMillis();
