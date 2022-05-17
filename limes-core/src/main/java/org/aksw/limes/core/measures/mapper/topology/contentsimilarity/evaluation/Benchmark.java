@@ -73,10 +73,8 @@ public class Benchmark {
         results.add(relation + ",Algo,Time,Precision,Recall,F,TP,FP,TN,FN"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
         FMeasure fMeasure = new FMeasure();
 
-        AMapping radon = RADON.getMapping(sourceMap, targetMap, relation, 1); //TODO increase number of threads
-        GoldStandard goldStandard = new GoldStandard(radon);
-        goldStandard.sourceUris = sourceWithoutSimplification.getAllUris();
-        goldStandard.targetUris = targetWithoutSimplification.getAllUris();
+        AMapping radon = null;
+        GoldStandard goldStandard = null;
 
         for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
             System.out.println("------------------");
@@ -86,6 +84,17 @@ public class Benchmark {
             long end = System.currentTimeMillis();
             long time = end - start;
             System.out.println("Time: " + time);
+
+            if(radon == null){
+                if(geoMapperEntry.getKey().equalsIgnoreCase("RADON")){
+                    radon = mapping;
+                    goldStandard = new GoldStandard(radon);
+                    goldStandard.sourceUris = sourceWithoutSimplification.getAllUris();
+                    goldStandard.targetUris = targetWithoutSimplification.getAllUris();
+                }else{
+                    throw new RuntimeException("Radon has to be the first mapper in the GeoMapperMap");
+                }
+            }
 
             double precision = fMeasure.precision(mapping, goldStandard);
             System.out.println("Precision:" + precision);
