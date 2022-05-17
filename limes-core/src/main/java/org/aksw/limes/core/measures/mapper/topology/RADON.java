@@ -367,17 +367,17 @@ public class RADON {
     }
 
     public static AMapping getMapping(ACache source, ACache target, String sourceVar, String targetVar,
-                                      String expression, double threshold, String relation) {
+                                      String expression, double threshold, String relation, int numThreads) {
         if (threshold <= 0) {
             throw new InvalidThresholdException(threshold);
         }
         List<String> properties = PropertyFetcher.getProperties(expression, threshold);
         Map<String, Geometry> sourceMap = getGeometryMapFromCache(source, properties.get(0));
         Map<String, Geometry> targetMap = getGeometryMapFromCache(target, properties.get(1));
-        return getMapping(sourceMap, targetMap, relation);
+        return getMapping(sourceMap, targetMap, relation, numThreads);
     }
 
-    public static AMapping getMapping(Set<Polygon> sourceData, Set<Polygon> targetData, String relation) {
+    public static AMapping getMapping(Set<Polygon> sourceData, Set<Polygon> targetData, String relation, int numThreads) {
         Map<String, Geometry> source, target;
         source = new HashMap<>();
         target = new HashMap<>();
@@ -395,13 +395,12 @@ public class RADON {
                 logger.warn("Skipping malformed geometry at " + polygon.uri + "...");
             }
         }
-        return getMapping(source, target, relation);
+        return getMapping(source, target, relation, numThreads);
     }
 
     public static AMapping getMapping(Map<String, Geometry> sourceData, Map<String, Geometry> targetData,
-                                      String relation) {
+                                      String relation, int numThreads) {
         double thetaX, thetaY;
-        int numThreads = new Double(Math.ceil((double) Runtime.getRuntime().availableProcessors() / 2.0d)).intValue();
         // Relation thats actually used for computation.
         // Might differ from input relation when swapping occurs or the input
         // relation is 'disjoint'.

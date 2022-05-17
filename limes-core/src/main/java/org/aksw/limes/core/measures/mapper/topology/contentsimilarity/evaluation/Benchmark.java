@@ -36,6 +36,7 @@ public class Benchmark {
             EQUALS, DISJOINT, INTERSECTS, TOUCHES, WITHIN, CONTAINS, OVERLAPS, COVERS, COVEREDBY
     };
 
+
     public static void main(String[] args) throws ParseException, IOException {
         ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(nuts);
         ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(nuts);
@@ -46,15 +47,17 @@ public class Benchmark {
         geoMapperMap.put("FM", new FMWrapper());
         geoMapperMap.put("RADON", new RadonWrapper());
 
+        int numThreads = 1;
+
         List<String> results = new ArrayList<>();
         for (String relation : RELATIONS) {
-            testForRelation(sourceWithoutSimplification, targetWithoutSimplification, relation, results, geoMapperMap);
+            testForRelation(sourceWithoutSimplification, targetWithoutSimplification, relation, results, geoMapperMap, numThreads);
         }
 
         log(results);
     }
 
-    private static void testForRelation(ACache sourceWithoutSimplification, ACache targetWithoutSimplification, String relation, List<String> results, Map<String, GeoMapper> geoMapperMap) {
+    private static void testForRelation(ACache sourceWithoutSimplification, ACache targetWithoutSimplification, String relation, List<String> results, Map<String, GeoMapper> geoMapperMap, int numThreads) {
         String expression = "top_" + relation + "(x.asWKT, y.asWKT)";
         if (relation == COVEREDBY) {
             expression = "top_" + "covered_by" + "(x.asWKT, y.asWKT)";
@@ -65,7 +68,7 @@ public class Benchmark {
         results.add(relation + ",Algo,Time,Precision,Recall,F,TP,FP,TN,FN"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
         FMeasure fMeasure = new FMeasure();
 
-        AMapping radon = RADON.getMapping(sourceMap, targetMap, relation);
+        AMapping radon = RADON.getMapping(sourceMap, targetMap, relation, 1); //TODO increase number of threads
         GoldStandard goldStandard = new GoldStandard(radon);
         goldStandard.sourceUris = sourceWithoutSimplification.getAllUris();
         goldStandard.targetUris = targetWithoutSimplification.getAllUris();
@@ -74,7 +77,7 @@ public class Benchmark {
             System.out.println("------------------");
             System.out.println(geoMapperEntry.getKey());
             long start = System.currentTimeMillis();
-            AMapping mapping = geoMapperEntry.getValue().getMapping(sourceMap, targetMap, relation);
+            AMapping mapping = geoMapperEntry.getValue().getMapping(sourceMap, targetMap, relation, numThreads);
             long end = System.currentTimeMillis();
             long time = end - start;
             System.out.println("Time: " + time);

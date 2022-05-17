@@ -167,27 +167,6 @@ public class MapperFactory {
             case TMP_STARTS:
                 return new StartsMapper();
 
-            ///////////////////////
-            case TOP_CONTAINS:
-                return new ContainsMapper();
-            case TOP_COVERED_BY:
-                return new CoveredbyMapper();
-            case TOP_COVERS:
-                return new CoversMapper();
-            case TOP_CROSSES:
-                return new CrossesMapper();
-            case TOP_DISJOINT:
-                return new DisjointMapper();
-            case TOP_EQUALS:
-                return new org.aksw.limes.core.measures.mapper.topology.EqualsMapper();
-            case TOP_INTERSECTS:
-                return new IntersectsMapper();
-            case TOP_OVERLAPS:
-                return new org.aksw.limes.core.measures.mapper.topology.OverlapsMapper();
-            case TOP_TOUCHES:
-                return new TouchesMapper();
-            case TOP_WITHIN:
-                return new WithinMapper();
 
             ///////////////////////
             case SET_JACCARD:
