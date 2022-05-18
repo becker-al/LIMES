@@ -7,7 +7,6 @@ import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
-import org.aksw.limes.core.measures.mapper.topology.RADON;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
@@ -18,8 +17,7 @@ import java.util.*;
 
 public class Benchmark {
 
-    private static final String nuts = "P:\\Cloud\\Studium\\22_Bachelorarbeit\\GeoConverter\\NUTS.nt";
-    private static final String clc = "P:\\Cloud\\Studium\\22_Bachelorarbeit\\GeoConverter\\CLC.nt";
+    private static final String baseDirectory = "P:\\Cloud\\Studium\\22_Bachelorarbeit\\GeoConverter\\";
 
     public static final String EQUALS = "equals";
     public static final String DISJOINT = "disjoint";
@@ -38,8 +36,11 @@ public class Benchmark {
 
 
     public static void main(String[] args) throws ParseException, IOException {
-        ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(nuts);
-        ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(nuts);
+        String sourceName = "NUTS";
+        String targetName = "CLC_Subset_111";
+
+        ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + sourceName + ".nt");
+        ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + targetName + ".nt");
 
         Map<String, GeoMapper> geoMapperMap = new LinkedHashMap<>();
         geoMapperMap.put("RADON", new RadonWrapper());
@@ -48,18 +49,14 @@ public class Benchmark {
         geoMapperMap.put("FD", new FDWrapper());
         geoMapperMap.put("FM", new FMWrapper());
 
-        geoMapperMap.put("FA_NoIndexing", new FANoIndexingWrapper());
-        geoMapperMap.put("FD_NoIndexing", new FDNoIndexingWrapper());
-        geoMapperMap.put("FM_NoIndexing", new FMNoIndexingWrapper());
-        
-        int numThreads = 1;
+        int numThreads = 2;
 
         List<String> results = new ArrayList<>();
         for (String relation : RELATIONS) {
             testForRelation(sourceWithoutSimplification, targetWithoutSimplification, relation, results, geoMapperMap, numThreads);
         }
 
-        log(results);
+        log(results, sourceName, targetName, numThreads);
     }
 
     private static void testForRelation(ACache sourceWithoutSimplification, ACache targetWithoutSimplification, String relation, List<String> results, Map<String, GeoMapper> geoMapperMap, int numThreads) {
@@ -70,7 +67,7 @@ public class Benchmark {
         Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
         Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
 
-        results.add(relation + ",Algo,Time,Precision,Recall,F,TP,FP,TN,FN"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
+        results.add(relation + ",Algo,F,Time,Precision,Recall,TP,FP,TN,FN,,P,N"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
         FMeasure fMeasure = new FMeasure();
 
         AMapping radon = null;
@@ -110,13 +107,13 @@ public class Benchmark {
             double fn = APRF.falseNegative(mapping, radon);
 
 
-            results.add(String.join(",", "", geoMapperEntry.getKey(), time + "", precision + "", recall + "", f+ "", tp+"", fp+"", tn+"", fn+""));
+            results.add(String.join(",", "", geoMapperEntry.getKey(), f+ "", time + "", precision + "", recall + "", tp+"", fp+"", tn+"", fn+"","",(tp+fp) + "", (tn + fn) + ""));
         }
         results.add("");
     }
 
-    public static void log(List<String> results) throws IOException {
-        FileWriter writer = new FileWriter("results.csv");
+    public static void log(List<String> results, String sourceName, String targetName, int numThreads) throws IOException {
+        FileWriter writer = new FileWriter("results_" + sourceName + "_" + targetName + "_" + numThreads +".csv");
         for (String str : results) {
             writer.write(str + System.lineSeparator());
         }

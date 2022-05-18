@@ -2,7 +2,7 @@ package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluatio
 
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.radon.ContentSimilarityMixed;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.ContentSimilarityMixed;
 import org.locationtech.jts.geom.Geometry;
 
 import java.util.Map;

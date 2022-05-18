@@ -1,4 +1,4 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.radon;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms;
 
 import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;

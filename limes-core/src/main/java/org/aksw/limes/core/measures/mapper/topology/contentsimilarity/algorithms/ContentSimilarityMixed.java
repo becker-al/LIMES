@@ -1,4 +1,18 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.radon;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms;
+
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
@@ -12,15 +26,10 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 
-import java.text.DecimalFormat;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import static org.aksw.limes.core.measures.mapper.topology.RADON.CROSSES;
 
 
-public class ContentSimilarityDiagonal {
+public class ContentSimilarityMixed {
 
 
     public static class GridSizeHeuristics {
@@ -259,52 +268,61 @@ public class ContentSimilarityDiagonal {
         public static boolean relate(Geometry s, Geometry t, String relation) {
             Envelope mbrA = s.getEnvelopeInternal();
             Envelope mbrB = t.getEnvelopeInternal();
-            double X = ContentMeasure.fD(mbrA, mbrB);
-            double Y = ContentMeasure.fD(mbrB, mbrA);
+            double X = ContentMeasure.fM(mbrA, mbrB);
+            double Y = ContentMeasure.fM(mbrB, mbrA);
             double Z = X + Y;
-
 
             switch (relation) {
                 case EQUALS:
-                    if (X == 1 && Y == 1 && Z == 2) {
+                    if (X == -1 && Y == -1 && Z == -2) {
                         return true;
                     } else {
                         return false;
                     }
                 case DISJOINT:
-                    if (0 < X && X < 1 && 0 < Y && Y < 1 && 0 < Z && Z < 2) {
+                    if (X > 1 && Y > 1 && Z > 2) {
                         return true;
                     } else {
                         return false;
                     }
                 case INTERSECTS:
-                    if (!(0 < X && X < 1 && 0 < Y && Y < 1 && 0 < Z && Z < 2)) {
+                    if (!(X > 1 && Y > 1 && Z > 2)) {
                         return true;
                     } else {
                         return false;
                     }
                 case TOUCHES: //meet
-                    if (0 < X && X < 1 && 0 < Y && Y < 1 && 1 <= Z && Z <= 2) {
+                    if (X == 1 && Y == 1 && Z == 2) {
                         return true;
                     } else {
                         return false;
                     }
                 case WITHIN://inside
-                case COVEREDBY:
-                    if (0 < X && X < 1 && Y == 1 && 1 < Z && Z < 2) {
+                    if (X < -1 && Math.abs(Y) < 1 && (-2 < Z && Z < 0)) {
                         return true;
                     } else {
                         return false;
                     }
                 case CONTAINS:
+                    if (Math.abs(X) < 1 && Y < -1 && (-2 < Z && Z < 0)) {
+                        return true;
+                    } else {
+                        return false;
+                    }
                 case COVERS:
-                    if (X == 1 && 0 < Y && Y < 1 && 1 < Z && Z < 2) {
+                    if (Math.abs(X) < 1 && Y == -1 && (-2 < Z && Z < 0)) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                case COVEREDBY:
+                    if (X == -1 && Math.abs(Y) < 1 && (-2 < Z && Z < 0)) {
                         return true;
                     } else {
                         return false;
                     }
                 case OVERLAPS:
-                    if (0 < X && X < 1 && 0 < Y && Y < 1 && 1 < Z && Z < 2) {
+                    if (Math.abs(X) < 1 && Math.abs(Y) < 1 && Math.abs(Z) < 2) {
                         return true;
                     } else {
                         return false;
@@ -362,7 +380,7 @@ public class ContentSimilarityDiagonal {
     // best measure according to our evaluation in the RADON paper
     public static String heuristicStatMeasure = "avg";
 
-    private static final Logger logger = Logger.getLogger(ContentSimilarityDiagonal.class);
+    private static final Logger logger = Logger.getLogger(ContentSimilarityMixed.class);
 
     public static Map<String, Geometry> getGeometryMapFromCache(ACache c, String property) {
         WKTReader wktReader = new WKTReader();

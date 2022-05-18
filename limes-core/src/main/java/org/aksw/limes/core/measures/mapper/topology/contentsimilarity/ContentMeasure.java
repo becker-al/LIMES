@@ -104,7 +104,7 @@ public class ContentMeasure {
     //Computes the mixed content measure Fm
     public static double fM(Envelope mbrA, Envelope mbrB){
         return ((area(mbrA) - 2 * area(intersection(mbrA, mbrB))) / area(mbrA))
-                - (distance(mbrA, mbrB) / diagonal(mbrA));
+                + (distance(mbrA, mbrB) / diagonal(mbrA));
     }
 
 }
