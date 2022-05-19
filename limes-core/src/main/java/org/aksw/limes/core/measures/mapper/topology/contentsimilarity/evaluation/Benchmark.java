@@ -7,6 +7,8 @@ import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
+import org.aksw.limes.core.measures.mapper.topology.RADON;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.ContentSimilarityMixed;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
@@ -31,13 +33,18 @@ public class Benchmark {
     public static final String COVEREDBY = "coveredby";
 
     public static final String[] RELATIONS = new String[]{
-            EQUALS, DISJOINT, INTERSECTS, TOUCHES, WITHIN, CONTAINS, OVERLAPS, COVERS, COVEREDBY
+            EQUALS, DISJOINT, INTERSECTS, TOUCHES, WITHIN,
+            CONTAINS,
+            OVERLAPS, COVERS, COVEREDBY
     };
 
 
     public static void main(String[] args) throws ParseException, IOException {
+        //String sourceName = "NUTS";
+        //String targetName = "CLC_Subset_111";
+
         String sourceName = "NUTS";
-        String targetName = "CLC_Subset_111";
+        String targetName = "NUTS";
 
         ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + sourceName + ".nt");
         ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + targetName + ".nt");
@@ -49,7 +56,7 @@ public class Benchmark {
         geoMapperMap.put("FD", new FDWrapper());
         geoMapperMap.put("FM", new FMWrapper());
 
-        int numThreads = 2;
+        int numThreads = 1;
 
         List<String> results = new ArrayList<>();
         for (String relation : RELATIONS) {
@@ -61,13 +68,13 @@ public class Benchmark {
 
     private static void testForRelation(ACache sourceWithoutSimplification, ACache targetWithoutSimplification, String relation, List<String> results, Map<String, GeoMapper> geoMapperMap, int numThreads) {
         String expression = "top_" + relation + "(x.asWKT, y.asWKT)";
-        if (relation == COVEREDBY) {
+        if (relation.equals(COVEREDBY)) {
             expression = "top_" + "covered_by" + "(x.asWKT, y.asWKT)";
         }
         Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
         Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
 
-        results.add(relation + ",Algo,F,Time,Precision,Recall,TP,FP,TN,FN,,P,N"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
+        results.add(relation + ",Algo,F,Time,Precision,Recall,TruePositive,FalsePositive,TrueNegative,FalseNegative,,Positive,Negative"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
         FMeasure fMeasure = new FMeasure();
 
         AMapping radon = null;
@@ -82,13 +89,13 @@ public class Benchmark {
             long time = end - start;
             System.out.println("Time: " + time);
 
-            if(radon == null){
-                if(geoMapperEntry.getKey().equalsIgnoreCase("RADON")){
+            if (radon == null) {
+                if (geoMapperEntry.getKey().equalsIgnoreCase("RADON")) {
                     radon = mapping;
                     goldStandard = new GoldStandard(radon);
                     goldStandard.sourceUris = sourceWithoutSimplification.getAllUris();
                     goldStandard.targetUris = targetWithoutSimplification.getAllUris();
-                }else{
+                } else {
                     throw new RuntimeException("Radon has to be the first mapper in the GeoMapperMap");
                 }
             }
@@ -99,6 +106,7 @@ public class Benchmark {
             System.out.println("Recall:" + recall);
             double f = fMeasure.calculate(mapping, goldStandard);
             System.out.println("F:" + f);
+            System.out.println(mapping.getNumberofMappings());
 
 
             double tp = APRF.trueFalsePositive(mapping, radon, true);
@@ -107,13 +115,13 @@ public class Benchmark {
             double fn = APRF.falseNegative(mapping, radon);
 
 
-            results.add(String.join(",", "", geoMapperEntry.getKey(), f+ "", time + "", precision + "", recall + "", tp+"", fp+"", tn+"", fn+"","",(tp+fp) + "", (tn + fn) + ""));
+            results.add(String.join(",", "", geoMapperEntry.getKey(), f + "", time + "", precision + "", recall + "", tp + "", fp + "", tn + "", fn + "", "", (tp + fp) + "", (tn + fn) + ""));
         }
         results.add("");
     }
 
     public static void log(List<String> results, String sourceName, String targetName, int numThreads) throws IOException {
-        FileWriter writer = new FileWriter("results_" + sourceName + "_" + targetName + "_" + numThreads +".csv");
+        FileWriter writer = new FileWriter("results_" + sourceName + "_" + targetName + "_" + numThreads + ".csv");
         for (String str : results) {
             writer.write(str + System.lineSeparator());
         }

@@ -280,13 +280,13 @@ public class ContentSimilarityMixed {
                         return false;
                     }
                 case DISJOINT:
-                    if (X > 1 && Y > 1 && Z > 2) {
+                    if (1 < X && 1 < Y && 2 < Z) {
                         return true;
                     } else {
                         return false;
                     }
                 case INTERSECTS:
-                    if (!(X > 1 && Y > 1 && Z > 2)) {
+                    if (!(1 < X && 1 < Y && 2 < Z)) {
                         return true;
                     } else {
                         return false;
