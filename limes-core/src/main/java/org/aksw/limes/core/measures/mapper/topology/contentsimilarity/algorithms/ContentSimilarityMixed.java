@@ -1,32 +1,14 @@
 package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms;
 
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import org.aksw.limes.core.exceptions.InvalidThresholdException;
-import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.io.mapping.MappingFactory;
-import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.ContentMeasure;
-import org.apache.log4j.Logger;
 import org.locationtech.jts.geom.Envelope;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.io.ParseException;
-import org.locationtech.jts.io.WKTReader;
 
-import static org.aksw.limes.core.measures.mapper.topology.RADON.CROSSES;
+import java.text.DecimalFormat;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class ContentSimilarityMixed {
@@ -74,12 +56,11 @@ public class ContentSimilarityMixed {
         private double avgY;
         private double medY;
 
-        public GridSizeHeuristics(Collection<Geometry> input) {
+        public GridSizeHeuristics(Collection<Envelope> input) {
             double[] x = new double[input.size()];
             double[] y = new double[input.size()];
             int i = 0;
-            for (Geometry geometry : input) {
-                Envelope e = geometry.getEnvelopeInternal();
+            for (Envelope e : input) {
                 y[i] = e.getHeight();
                 x[i] = e.getWidth();
                 i++;
@@ -145,11 +126,11 @@ public class ContentSimilarityMixed {
     public static class MBBIndex {
 
         public int lat1, lat2, lon1, lon2;
-        public Geometry polygon;
+        public Envelope polygon;
         private String uri;
         private String origin_uri;
 
-        public MBBIndex(int lat1, int lon1, int lat2, int lon2, Geometry polygon, String uri) {
+        public MBBIndex(int lat1, int lon1, int lat2, int lon2, Envelope polygon, String uri) {
             this.lat1 = lat1;
             this.lat2 = lat2;
             this.lon1 = lon1;
@@ -159,7 +140,7 @@ public class ContentSimilarityMixed {
             this.origin_uri = uri;
         }
 
-        public MBBIndex(int lat1, int lon1, int lat2, int lon2, Geometry polygon, String uri, String origin_uri) {
+        public MBBIndex(int lat1, int lon1, int lat2, int lon2, Envelope polygon, String uri, String origin_uri) {
             this.lat1 = lat1;
             this.lat2 = lat2;
             this.lon1 = lon1;
@@ -265,64 +246,51 @@ public class ContentSimilarityMixed {
             return scheduled.size();
         }
 
-        public static boolean relate(Geometry s, Geometry t, String relation) {
-            Envelope mbrA = s.getEnvelopeInternal();
-            Envelope mbrB = t.getEnvelopeInternal();
+        public static boolean relate(Envelope mbrA, Envelope mbrB, String relation) {
             double X = ContentMeasure.fM(mbrA, mbrB);
             double Y = ContentMeasure.fM(mbrB, mbrA);
             double Z = X + Y;
 
+            return relate(X, Y, Z, relation);
+        }
+
+        public static boolean relate(double X, double Y, double Z, String relation) {
             switch (relation) {
                 case EQUALS:
-                    if (X == -1 && Y == -1 && Z == -2) {
+                    if (X == -1 && Y == -1) {
                         return true;
                     } else {
                         return false;
                     }
                 case DISJOINT:
-                    if (1 < X && 1 < Y && 2 < Z) {
+                    if (1 < X && 1 < Y) {
                         return true;
                     } else {
                         return false;
                     }
                 case INTERSECTS:
-                    if (!(1 < X && 1 < Y && 2 < Z)) {
+                    if (!(1 < X && 1 < Y)) {
                         return true;
                     } else {
                         return false;
                     }
                 case TOUCHES: //meet
-                    if (X == 1 && Y == 1 && Z == 2) {
+                    if (X == 1 && Y == 1) {
                         return true;
                     } else {
                         return false;
                     }
-                case WITHIN://inside
-                    if (X < -1 && Math.abs(Y) < 1 && (-2 < Z && Z < 0)) {
-                        return true;
-                    } else {
-                        return false;
-                    }
+
                 case CONTAINS:
-                    if (Math.abs(X) < 1 && Y < -1 && (-2 < Z && Z < 0)) {
-                        return true;
-                    } else {
-                        return false;
-                    }
                 case COVERS:
-                    if (Math.abs(X) < 1 && Y == -1 && (-2 < Z && Z < 0)) {
-                        return true;
-                    } else {
-                        return false;
-                    }
+                    return (Math.abs(X) < 1 && Y == -1) || (Math.abs(X) < 1 && Y < -1) || relate(X,Y,Z,EQUALS);
+
+                case WITHIN:
                 case COVEREDBY:
-                    if (X == -1 && Math.abs(Y) < 1 && (-2 < Z && Z < 0)) {
-                        return true;
-                    } else {
-                        return false;
-                    }
+                    return (X < -1 && Math.abs(Y) < 1) || (X == -1 && Math.abs(Y) < 1) || relate(X,Y,Z,EQUALS);
+
                 case OVERLAPS:
-                    if (Math.abs(X) < 1 && Math.abs(Y) < 1 && Math.abs(Z) < 2) {
+                    if (Math.abs(X) < 1 && Math.abs(Y) < 1) {
                         return true;
                     } else {
                         return false;
@@ -330,9 +298,8 @@ public class ContentSimilarityMixed {
                 default:
                     return false;
             }
-
-
         }
+
     }
 
     public static class Merger implements Runnable {
@@ -380,65 +347,10 @@ public class ContentSimilarityMixed {
     // best measure according to our evaluation in the RADON paper
     public static String heuristicStatMeasure = "avg";
 
-    private static final Logger logger = Logger.getLogger(ContentSimilarityMixed.class);
-
-    public static Map<String, Geometry> getGeometryMapFromCache(ACache c, String property) {
-        WKTReader wktReader = new WKTReader();
-        Map<String, Geometry> gMap = new HashMap<>();
-        for (String uri : c.getAllUris()) {
-            Set<String> values = c.getInstance(uri).getProperty(property);
-            if (values.size() > 0) {
-                String wkt = values.iterator().next();
-                try {
-                    gMap.put(uri, wktReader.read(wkt));
-                } catch (ParseException e) {
-                    logger.warn("Skipping malformed geometry at " + uri + "...");
-                }
-            }
-        }
-        return gMap;
-    }
-
-    public static AMapping getMapping(ACache source, ACache target, String sourceVar, String targetVar,
-                                      String expression, double threshold, String relation, int numThreads) {
-        if (threshold <= 0) {
-            throw new InvalidThresholdException(threshold);
-        }
-        //System.out.println("RADON is here");
-        List<String> properties = PropertyFetcher.getProperties(expression, threshold);
-
-        Map<String, Geometry> sourceMap = getGeometryMapFromCache(source, properties.get(0));
-
-        Map<String, Geometry> targetMap = getGeometryMapFromCache(target, properties.get(1));
-        //	System.out.println("RADON is still here "+targetMap.toString());
-        return getMapping(sourceMap, targetMap, relation, numThreads);
-    }
-
-		/*public static AMapping getMapping(Set<Polygon> sourceData, Set<Polygon> targetData, String relation) {
-			Map<String, Geometry> source, target;
-			source = new HashMap<>();
-			target = new HashMap<>();
-			for (Polygon polygon : sourceData) {
-				try {
-					source.put(polygon.uri, polygon.getGeometry());
-				} catch (ParseException e) {
-					//logger.warn("Skipping malformed geometry at " + polygon.uri + "...");
-				}
-			}
-			for (Polygon polygon : targetData) {
-				try {
-					target.put(polygon.uri, polygon.getGeometry());
-				} catch (ParseException e) {
-					//logger.warn("Skipping malformed geometry at " + polygon.uri + "...");
-				}
-			}
-			return getMapping(source, target, relation);
-		}*/
-
-    public static AMapping getMapping(Map<String, Geometry> sourceData, Map<String, Geometry> targetData,
+    public static AMapping getMapping(Map<String, Envelope> sourceData, Map<String, Envelope> targetData,
                                       String relation, int numThreads) {
         double thetaX, thetaY;
-        @SuppressWarnings("deprecation")
+
         // Relation thats actually used for computation.
         // Might differ from input relation when swapping occurs or the input
         // relation is 'disjoint'.
@@ -458,7 +370,7 @@ public class ContentSimilarityMixed {
         thetaY = theta[1];
         // swap smaller dataset to source
         // if swap is necessary is decided in Stats.decideForTheta([...])!
-        Map<String, Geometry> swap;
+        Map<String, Envelope> swap;
         boolean swapped = GridSizeHeuristics.swap;
         if (swapped) {
             swap = sourceData;
@@ -506,32 +418,22 @@ public class ContentSimilarityMixed {
                         for (MBBIndex b : target) {
                             if (!computed.get(a.uri).contains(b.uri)) {
                                 computed.get(a.uri).add(b.uri);
-                                boolean compute = (rel.equals(COVERS) && a.covers(b))
-                                        || (rel.equals(COVEREDBY) && b.covers(a))
-                                        || (rel.equals(CONTAINS) && a.contains(b))
-                                        || (rel.equals(WITHIN) && b.contains(a))
-                                        ||
-                                        (rel.equals(EQUALS) && a.equals(b))
-                                        || rel.equals(INTERSECTS) || rel.equals(CROSSES) || rel.equals(TOUCHES)
-                                        || rel.equals(OVERLAPS);
-                                if (compute) {
-                                    //System.out.println(" the new relation is: "+rel);
-                                    if (numThreads == 1) {
+                                //System.out.println(" the new relation is: "+rel);
+                                if (numThreads == 1) {
 
-                                        if (Matcher.relate(a.polygon, b.polygon, rel)) {
-                                            if (swapped)
-                                                m.add(b.origin_uri, a.origin_uri, 1.0);
-                                            else
-                                                m.add(a.origin_uri, b.origin_uri, 1.0);
-                                        }
-                                    } else {
-                                        matcher.schedule(a, b);
-                                        if (matcher.size() == Matcher.maxSize) {
-                                            matchExec.execute(matcher);
-                                            matcher = new Matcher(rel, results);
-                                            if (results.size() > 0) {
-                                                mergerExec.execute(new Merger(results, m));
-                                            }
+                                    if (Matcher.relate(a.polygon, b.polygon, rel)) {
+                                        if (swapped)
+                                            m.add(b.origin_uri, a.origin_uri, 1.0);
+                                        else
+                                            m.add(a.origin_uri, b.origin_uri, 1.0);
+                                    }
+                                } else {
+                                    matcher.schedule(a, b);
+                                    if (matcher.size() == Matcher.maxSize) {
+                                        matchExec.execute(matcher);
+                                        matcher = new Matcher(rel, results);
+                                        if (results.size() > 0) {
+                                            mergerExec.execute(new Merger(results, m));
                                         }
                                     }
                                 }
@@ -591,17 +493,16 @@ public class ContentSimilarityMixed {
         return m;
     }
 
-    public static SquareIndex index(Map<String, Geometry> input, SquareIndex extIndex, double thetaX, double thetaY) {
+    public static SquareIndex index(Map<String, Envelope> input, SquareIndex extIndex, double thetaX, double thetaY) {
         SquareIndex result = new SquareIndex();
 
         for (String p : input.keySet()) {
-            Geometry g = input.get(p);
-            Envelope envelope = g.getEnvelopeInternal();
+            Envelope g = input.get(p);
 
-            int minLatIndex = (int) Math.floor(envelope.getMinY() * thetaY);
-            int maxLatIndex = (int) Math.ceil(envelope.getMaxY() * thetaY);
-            int minLongIndex = (int) Math.floor(envelope.getMinX() * thetaX);
-            int maxLongIndex = (int) Math.ceil(envelope.getMaxX() * thetaX);
+            int minLatIndex = (int) Math.floor(g.getMinY() * thetaY);
+            int maxLatIndex = (int) Math.ceil(g.getMaxY() * thetaY);
+            int minLongIndex = (int) Math.floor(g.getMinX() * thetaX);
+            int maxLongIndex = (int) Math.ceil(g.getMaxX() * thetaX);
 
             // Check for passing over 180th meridian. In case its shorter to
             // pass over it, we assume that is what is

@@ -4,16 +4,16 @@ import org.locationtech.jts.geom.Envelope;
 
 public class ContentMeasure {
 
-    private static double area(Envelope mbr) {
+    public static double area(Envelope mbr) {
         return mbr.getArea();
     }
 
-    private static double diagonal(Envelope mbr) {
+    public static double diagonal(Envelope mbr) {
         return Math.sqrt(mbr.getHeight() * mbr.getHeight() + mbr.getWidth() * mbr.getWidth());
     }
 
     //Creates the union mbr of two mbrs
-    private static Envelope union(Envelope mbrA, Envelope mbrB) {
+    public static Envelope union(Envelope mbrA, Envelope mbrB) {
         return new Envelope(
                 Math.min(mbrA.getMinX(), mbrB.getMinX()),
                 Math.max(mbrA.getMaxX(), mbrB.getMaxX()),
@@ -23,12 +23,12 @@ public class ContentMeasure {
     }
 
     //Creates the intersection mbr of two non disjoint mbrs
-    private static Envelope intersection(Envelope mbrA, Envelope mbrB) {
+    public static Envelope intersection(Envelope mbrA, Envelope mbrB) {
         return mbrA.intersection(mbrB);
     }
 
     //Checks if the two envelopes overlap on the x axis
-    private static boolean projectionX(Envelope mbrA, Envelope mbrB) {
+    public static boolean projectionX(Envelope mbrA, Envelope mbrB) {
         if (mbrA.getMinX() > mbrB.getMaxX()) {
             return false;
         } else if (mbrA.getMaxX() < mbrB.getMinX()) {
@@ -39,7 +39,7 @@ public class ContentMeasure {
     }
 
     //Checks if the two envelopes overlap on the y axis
-    private static boolean projectionY(Envelope mbrA, Envelope mbrB) {
+    public static boolean projectionY(Envelope mbrA, Envelope mbrB) {
         if (mbrA.getMinY() > mbrB.getMaxY()) {
             return false;
         } else if (mbrA.getMaxY() < mbrB.getMinY()) {
@@ -50,7 +50,7 @@ public class ContentMeasure {
     }
 
     //Computes the distance between two mbrs
-    private static double distance(Envelope mbrA, Envelope mbrB) {
+    public static double distance(Envelope mbrA, Envelope mbrB) {
         if (!projectionX(mbrA, mbrB) && !projectionY(mbrA, mbrB)) {
             return Math.sqrt(
                     Math.pow(
@@ -66,7 +66,7 @@ public class ContentMeasure {
                     )
             );
         } else if (union(mbrA, mbrB).getArea() == Math.max(mbrA.getArea(), mbrB.getArea())) {
-            return Math.min(
+            return -Math.min(
                     Math.min(
                             Math.abs(mbrA.getMinX() - mbrB.getMinX()),
                             Math.abs(mbrA.getMaxX() - mbrB.getMaxX())
@@ -106,5 +106,19 @@ public class ContentMeasure {
         return ((area(mbrA) - 2 * area(intersection(mbrA, mbrB))) / area(mbrA))
                 + (distance(mbrA, mbrB) / diagonal(mbrA));
     }
+    /*
+    For the case B contains A, A is really small
+    First line: area(a)/area(a) - 2 * area(a)/area(a) = 1-2=-1
+    Second line: Distance does not matter, lets say it is equal to -1
+    Diagonal(a) close to 0, so we have
+    -1/0.000...01 = -infinity
+
+    Other way around:
+    First line: area(b)/area(b) - 2*area(a)/area(b) = 1 - almost 0
+    Second line: Distance = -1 again, Diagonal B > 1
+
+
+
+    */
 
 }

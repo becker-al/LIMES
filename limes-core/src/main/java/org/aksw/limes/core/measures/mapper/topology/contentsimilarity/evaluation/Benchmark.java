@@ -2,13 +2,11 @@ package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluatio
 
 import org.aksw.limes.core.datastrutures.GoldStandard;
 import org.aksw.limes.core.evaluation.qualititativeMeasures.APRF;
-import org.aksw.limes.core.evaluation.qualititativeMeasures.FMeasure;
 import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
+import org.aksw.limes.core.io.mapping.MemoryMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
-import org.aksw.limes.core.measures.mapper.topology.RADON;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.ContentSimilarityMixed;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
@@ -42,21 +40,25 @@ public class Benchmark {
     public static void main(String[] args) throws ParseException, IOException {
         //String sourceName = "NUTS";
         //String targetName = "CLC_Subset_111";
+        int numThreads = 1;
 
-        String sourceName = "NUTS";
-        String targetName = "NUTS";
+        test("NUTS", "NUTS", numThreads);
+        //test("NUTS", "NUTS", numThreads);
+    }
 
+    private static void test(String sourceName, String targetName, int numThreads) throws ParseException, IOException {
         ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + sourceName + ".nt");
         ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + targetName + ".nt");
 
         Map<String, GeoMapper> geoMapperMap = new LinkedHashMap<>();
         geoMapperMap.put("RADON", new RadonWrapper());
+        geoMapperMap.put("RADON_MBB", new RadonOnlyMBBWrapper());
+
+        //geoMapperMap.put("RADON", new RadonOnlyMBBWrapper());
 
         geoMapperMap.put("FA", new FAWrapper());
         geoMapperMap.put("FD", new FDWrapper());
         geoMapperMap.put("FM", new FMWrapper());
-
-        int numThreads = 1;
 
         List<String> results = new ArrayList<>();
         for (String relation : RELATIONS) {
@@ -75,12 +77,12 @@ public class Benchmark {
         Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
 
         results.add(relation + ",Algo,F,Time,Precision,Recall,TruePositive,FalsePositive,TrueNegative,FalseNegative,,Positive,Negative"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
-        FMeasure fMeasure = new FMeasure();
 
         AMapping radon = null;
         GoldStandard goldStandard = null;
 
         for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
+            System.gc();
             System.out.println("------------------");
             System.out.println(geoMapperEntry.getKey() + " | " + relation);
             long start = System.currentTimeMillis();
@@ -100,19 +102,19 @@ public class Benchmark {
                 }
             }
 
-            double precision = fMeasure.precision(mapping, goldStandard);
-            System.out.println("Precision:" + precision);
-            double recall = fMeasure.recall(mapping, goldStandard);
-            System.out.println("Recall:" + recall);
-            double f = fMeasure.calculate(mapping, goldStandard);
-            System.out.println("F:" + f);
-            System.out.println(mapping.getNumberofMappings());
 
 
             double tp = APRF.trueFalsePositive(mapping, radon, true);
             double fp = APRF.trueFalsePositive(mapping, radon, false);
             double tn = APRF.trueNegative(mapping, goldStandard);
             double fn = APRF.falseNegative(mapping, radon);
+
+            double precision = calculatePrecision(tp, fp, tn, fn);
+            System.out.println("Precision:" + precision);
+            double recall = calculateRecall(tp, fp, tn, fn);
+            System.out.println("Recall:" + recall);
+            double f = calculateFScore(tp, fp, tn, fn);
+            System.out.println("F:" + f);
 
 
             results.add(String.join(",", "", geoMapperEntry.getKey(), f + "", time + "", precision + "", recall + "", tp + "", fp + "", tn + "", fn + "", "", (tp + fp) + "", (tn + fn) + ""));
@@ -162,6 +164,34 @@ public class Benchmark {
         List<String> properties = PropertyFetcher.getProperties(expression, threshold);
         Map<String, Geometry> targetMap = getGeometryMapFromCache(target, properties.get(1));
         return targetMap;
+    }
+
+    public static double calculatePrecision(double tp, double fp, double tn, double fn){
+        if (tp + fp == 0){
+            return 0;
+        }
+        return tp / (tp + fp);
+    }
+
+    public static double calculateRecall(double tp, double fp, double tn, double fn){
+        if (tp + fn == 0){
+            return 0;
+        }
+        return tp / (tp + fn);
+    }
+
+    public static double calculateFScore(double tp, double fp, double tn, double fn){
+        double beta = 1.0D;
+
+        double p = calculatePrecision(tp, fp, tn, fn);
+        double r = calculateRecall(tp, fp, tn, fn);
+        double beta2 = Math.pow(beta, 2);
+
+        if (p + r > 0d)
+            return (1 + beta2) * p * r / ((beta2 * p) + r);
+        else
+            return 0d;
+
     }
 
 }
