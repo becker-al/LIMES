@@ -5,17 +5,19 @@ import org.aksw.limes.core.evaluation.qualititativeMeasures.APRF;
 import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
-import org.aksw.limes.core.io.mapping.MemoryMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
+import org.aksw.limes.core.measures.mapper.topology.RADON;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class Benchmark {
+public class MultiFileBenchmark {
 
     private static final String baseDirectory = "P:\\Cloud\\Studium\\22_Bachelorarbeit\\GeoConverter\\";
 
@@ -40,15 +42,13 @@ public class Benchmark {
     public static void main(String[] args) throws ParseException, IOException {
         //String sourceName = "NUTS";
         //String targetName = "CLC_Subset_111";
-        int numThreads = 1;
+        int numThreads = 14;
 
-        test(baseDirectory, "NUTS", "NUTS", numThreads);
+        test(baseDirectory, "NUTS", "CLC_Split_25000_1", numThreads);
         //test("NUTS", "NUTS", numThreads);
     }
 
-    public static void test(String baseDirectory, String sourceName, String targetName, int numThreads) throws ParseException, IOException {
-        ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + sourceName + ".nt");
-        ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + targetName + ".nt");
+    public static void test(String baseDirectory, String sourceNamesStart, String targetNamesStart, int numThreads) throws ParseException, IOException {
 
         Map<String, GeoMapper> geoMapperMap = new LinkedHashMap<>();
         geoMapperMap.put("RADON", new RadonWrapper());
@@ -62,53 +62,62 @@ public class Benchmark {
 
         List<String> results = new ArrayList<>();
         for (String relation : RELATIONS) {
-            testForRelation(sourceWithoutSimplification, targetWithoutSimplification, relation, results, geoMapperMap, numThreads);
+            testForRelation(baseDirectory, sourceNamesStart, targetNamesStart, relation, results, geoMapperMap, numThreads);
         }
 
-        log(results, sourceName, targetName, numThreads);
+        log(results, sourceNamesStart, targetNamesStart, numThreads);
     }
 
-    private static void testForRelation(ACache sourceWithoutSimplification, ACache targetWithoutSimplification, String relation, List<String> results, Map<String, GeoMapper> geoMapperMap, int numThreads) {
+    public static void testForRelation(String baseDirectory, String sourceNamesStart, String targetNamesStart, String relation, List<String> results, Map<String, GeoMapper> geoMapperMap, int numThreads) throws ParseException {
         String expression = "top_" + relation + "(x.asWKT, y.asWKT)";
         if (relation.equals(COVEREDBY)) {
             expression = "top_" + "covered_by" + "(x.asWKT, y.asWKT)";
         }
-        Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
-        Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
+
 
         results.add(relation + ",Algo,F,Time,Precision,Recall,TruePositive,FalsePositive,TrueNegative,FalseNegative,,Positive,Negative"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
 
-        AMapping radon = null;
-        GoldStandard goldStandard = null;
 
         for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
-            System.gc();
             System.out.println("------------------");
             System.out.println(geoMapperEntry.getKey() + " | " + relation);
-            long start = System.currentTimeMillis();
-            AMapping mapping = geoMapperEntry.getValue().getMapping(sourceMap, targetMap, relation, numThreads);
-            long end = System.currentTimeMillis();
-            long time = end - start;
-            System.out.println("Time: " + time);
 
-            if (radon == null) {
-                if (geoMapperEntry.getKey().equalsIgnoreCase("RADON")) {
-                    radon = mapping;
-                    goldStandard = new GoldStandard(radon);
+            List<String> sourceFileNames = Arrays.stream(new File(baseDirectory).listFiles()).filter(file -> file.getName().toLowerCase().startsWith(sourceNamesStart.toLowerCase())).map(File::getAbsolutePath).sorted().collect(Collectors.toList());
+
+            double tp = 0;
+            double fp = 0;
+            double tn = 0;
+            double fn = 0;
+            long totalTime = 0;
+
+            for (String sourceFileName : sourceFileNames) {
+                System.out.println("SourceFile: " + sourceFileName);
+                ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(sourceFileName);
+                Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
+                List<String> targetFileNames = Arrays.stream(new File(baseDirectory).listFiles()).filter(file -> file.getName().toLowerCase().startsWith(targetNamesStart.toLowerCase())).map(File::getAbsolutePath).sorted().collect(Collectors.toList());
+                for (String targetFileName : targetFileNames) {
+                    System.out.println("TargetFile: " + targetFileName);
+                    System.gc();
+                    ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(targetFileName);
+                    Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
+
+                    long start = System.currentTimeMillis();
+                    AMapping mapping = geoMapperEntry.getValue().getMapping(sourceMap, targetMap, relation, numThreads);
+                    long end = System.currentTimeMillis();
+
+                    totalTime += (end - start);
+                    AMapping radon = RADON.getMapping(sourceMap, targetMap, relation, numThreads);
+                    GoldStandard goldStandard = new GoldStandard(radon);
                     goldStandard.sourceUris = sourceWithoutSimplification.getAllUris();
                     goldStandard.targetUris = targetWithoutSimplification.getAllUris();
-                } else {
-                    throw new RuntimeException("Radon has to be the first mapper in the GeoMapperMap");
+                    tp += APRF.trueFalsePositive(mapping, radon, true);
+                    fp += APRF.trueFalsePositive(mapping, radon, false);
+                    tn += APRF.trueNegative(mapping, goldStandard);
+                    fn += APRF.falseNegative(mapping, radon);
                 }
             }
 
-
-
-            double tp = APRF.trueFalsePositive(mapping, radon, true);
-            double fp = APRF.trueFalsePositive(mapping, radon, false);
-            double tn = APRF.trueNegative(mapping, goldStandard);
-            double fn = APRF.falseNegative(mapping, radon);
-
+            System.out.println("Time: " + totalTime);
             double precision = calculatePrecision(tp, fp, tn, fn);
             System.out.println("Precision:" + precision);
             double recall = calculateRecall(tp, fp, tn, fn);
@@ -117,13 +126,13 @@ public class Benchmark {
             System.out.println("F:" + f);
 
 
-            results.add(String.join(",", "", geoMapperEntry.getKey(), f + "", time + "", precision + "", recall + "", tp + "", fp + "", tn + "", fn + "", "", (tp + fp) + "", (tn + fn) + ""));
+            results.add(String.join(",", "", geoMapperEntry.getKey(), f + "", totalTime + "", precision + "", recall + "", tp + "", fp + "", tn + "", fn + "", "", (tp + fp) + "", (tn + fn) + ""));
         }
         results.add("");
     }
 
     public static void log(List<String> results, String sourceName, String targetName, int numThreads) throws IOException {
-        FileWriter writer = new FileWriter("results_" + sourceName + "_" + targetName + "_" + numThreads + ".csv");
+        FileWriter writer = new FileWriter("multi_results_" + sourceName + "_" + targetName + "_" + numThreads + ".csv");
         for (String str : results) {
             writer.write(str + System.lineSeparator());
         }

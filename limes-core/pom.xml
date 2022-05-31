@@ -59,7 +59,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.Benchmark</mainClass>
+                            <mainClass>org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.BenchmarkCmdMain</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
