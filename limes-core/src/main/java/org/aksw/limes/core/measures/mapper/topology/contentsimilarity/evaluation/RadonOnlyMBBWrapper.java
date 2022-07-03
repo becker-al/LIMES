@@ -19,4 +19,14 @@ public class RadonOnlyMBBWrapper implements GeoMapper {
         return RADON.getMapping(sourceMBB, targetMBB, relation, numThreads);
     }
 
+    @Override
+    public String getIndexingName() {
+        return "RADON";
+    }
+
+    @Override
+    public String getMatcherName() {
+        return "MBB_RADON";
+    }
+
 }

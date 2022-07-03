@@ -7,6 +7,14 @@ import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
 import org.aksw.limes.core.measures.mapper.topology.RADON;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.fullr.FullRTreeWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RTreeIndexing;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RadonIndexingMBB;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FARelater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FDRelater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FMRelater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.MbbOptimalRelater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.wrapper.AbstractWrapper;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
@@ -44,22 +52,29 @@ public class MultiFileBenchmark {
         //String targetName = "CLC_Subset_111";
         int numThreads = 14;
 
-        test(baseDirectory, "NUTS", "CLC_Split_25000_1", numThreads);
+        test(baseDirectory, "NUTS", "CLC_Split_10000_10", numThreads);
         //test("NUTS", "NUTS", numThreads);
     }
 
     public static void test(String baseDirectory, String sourceNamesStart, String targetNamesStart, int numThreads) throws ParseException, IOException {
 
         Map<String, GeoMapper> geoMapperMap = new LinkedHashMap<>();
+
         geoMapperMap.put("RADON", new RadonWrapper());
         geoMapperMap.put("RADON_MBB", new RadonOnlyMBBWrapper());
 
         //geoMapperMap.put("RADON", new RadonOnlyMBBWrapper());
 
-        geoMapperMap.put("FA", new FAWrapper());
-        geoMapperMap.put("FD", new FDWrapper());
-        geoMapperMap.put("FM", new FMWrapper());
+        geoMapperMap.put("FA_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FARelater()));
+        geoMapperMap.put("FD_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FDRelater()));
+        geoMapperMap.put("FM_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FMRelater()));
+        geoMapperMap.put("Optimal_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new MbbOptimalRelater()));
 
+        geoMapperMap.put("FA_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FARelater()));
+        geoMapperMap.put("FD_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FDRelater()));
+        geoMapperMap.put("FM_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FMRelater()));
+        geoMapperMap.put("Optimal_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new MbbOptimalRelater()));
+        geoMapperMap.put("RTREE_FULL", new FullRTreeWrapper());
         List<String> results = new ArrayList<>();
         for (String relation : RELATIONS) {
             testForRelation(baseDirectory, sourceNamesStart, targetNamesStart, relation, results, geoMapperMap, numThreads);
@@ -69,65 +84,95 @@ public class MultiFileBenchmark {
     }
 
     public static void testForRelation(String baseDirectory, String sourceNamesStart, String targetNamesStart, String relation, List<String> results, Map<String, GeoMapper> geoMapperMap, int numThreads) throws ParseException {
+        System.out.println(relation);
         String expression = "top_" + relation + "(x.asWKT, y.asWKT)";
         if (relation.equals(COVEREDBY)) {
             expression = "top_" + "covered_by" + "(x.asWKT, y.asWKT)";
         }
+        results.add(relation + ",Indexing,Matcher,F,Time,Precision,Recall,TruePositive,FalsePositive,TrueNegative,FalseNegative,,Positive,Negative"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
+        List<String> sourceFileNames = Arrays.stream(new File(baseDirectory).listFiles()).filter(file -> file.getName().toLowerCase().startsWith(sourceNamesStart.toLowerCase())).map(File::getAbsolutePath).sorted().collect(Collectors.toList());
+        HashMap<String, Long> totalTime = new HashMap<>();
+        HashMap<String, Integer> totalTP = new HashMap<>();
+        HashMap<String, Integer> totalFP = new HashMap<>();
+        HashMap<String, Integer> totalTN = new HashMap<>();
+        HashMap<String, Integer> totalFN = new HashMap<>();
 
+        for (Map.Entry<String, GeoMapper> entry : geoMapperMap.entrySet()) {
+            totalTime.put(entry.getKey(), 0L);
+            totalTP.put(entry.getKey(), 0);
+            totalFP.put(entry.getKey(), 0);
+            totalTN.put(entry.getKey(), 0);
+            totalFN.put(entry.getKey(), 0);
+        }
 
-        results.add(relation + ",Algo,F,Time,Precision,Recall,TruePositive,FalsePositive,TrueNegative,FalseNegative,,Positive,Negative"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
+        for (String sourceFileName : sourceFileNames) {
+            System.out.println("SourceFile: " + sourceFileName);
+            ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(sourceFileName);
+            Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
+            List<String> targetFileNames = Arrays.stream(new File(baseDirectory).listFiles()).filter(file -> file.getName().toLowerCase().startsWith(targetNamesStart.toLowerCase())).map(File::getAbsolutePath).sorted().collect(Collectors.toList());
+            for (String targetFileName : targetFileNames) {
+                System.out.println("TargetFile: " + targetFileName);
+                ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(targetFileName);
+                Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
 
-
-        for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
-            System.out.println("------------------");
-            System.out.println(geoMapperEntry.getKey() + " | " + relation);
-
-            List<String> sourceFileNames = Arrays.stream(new File(baseDirectory).listFiles()).filter(file -> file.getName().toLowerCase().startsWith(sourceNamesStart.toLowerCase())).map(File::getAbsolutePath).sorted().collect(Collectors.toList());
-
-            double tp = 0;
-            double fp = 0;
-            double tn = 0;
-            double fn = 0;
-            long totalTime = 0;
-
-            for (String sourceFileName : sourceFileNames) {
-                System.out.println("SourceFile: " + sourceFileName);
-                ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(sourceFileName);
-                Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
-                List<String> targetFileNames = Arrays.stream(new File(baseDirectory).listFiles()).filter(file -> file.getName().toLowerCase().startsWith(targetNamesStart.toLowerCase())).map(File::getAbsolutePath).sorted().collect(Collectors.toList());
-                for (String targetFileName : targetFileNames) {
-                    System.out.println("TargetFile: " + targetFileName);
+                AMapping radon = null;
+                GoldStandard goldStandard = null;
+                for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
                     System.gc();
-                    ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(targetFileName);
-                    Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
-
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                     long start = System.currentTimeMillis();
                     AMapping mapping = geoMapperEntry.getValue().getMapping(sourceMap, targetMap, relation, numThreads);
                     long end = System.currentTimeMillis();
+                    long time = (end - start);
 
-                    totalTime += (end - start);
-                    AMapping radon = RADON.getMapping(sourceMap, targetMap, relation, numThreads);
-                    GoldStandard goldStandard = new GoldStandard(radon);
-                    goldStandard.sourceUris = sourceWithoutSimplification.getAllUris();
-                    goldStandard.targetUris = targetWithoutSimplification.getAllUris();
-                    tp += APRF.trueFalsePositive(mapping, radon, true);
-                    fp += APRF.trueFalsePositive(mapping, radon, false);
-                    tn += APRF.trueNegative(mapping, goldStandard);
-                    fn += APRF.falseNegative(mapping, radon);
+                    if (radon == null) {
+                        if (geoMapperEntry.getKey().equalsIgnoreCase("RADON")) {
+                            radon = mapping;
+                            goldStandard = new GoldStandard(radon);
+                            goldStandard.sourceUris = sourceWithoutSimplification.getAllUris();
+                            goldStandard.targetUris = targetWithoutSimplification.getAllUris();
+                        } else {
+                            throw new RuntimeException("Radon has to be the first mapper in the GeoMapperMap");
+                        }
+                    }
+
+                    double tp = APRF.trueFalsePositive(mapping, radon, true);
+                    double fp = APRF.trueFalsePositive(mapping, radon, false);
+                    double tn = APRF.trueNegative(mapping, goldStandard);
+                    double fn = APRF.falseNegative(mapping, radon);
+                    totalTime.put(geoMapperEntry.getKey(), totalTime.get(geoMapperEntry.getKey()) + time);
+                    totalTP.put(geoMapperEntry.getKey(), (int) (Math.ceil(totalTP.get(geoMapperEntry.getKey())) + tp));
+                    totalFP.put(geoMapperEntry.getKey(), (int) (Math.ceil(totalFP.get(geoMapperEntry.getKey())) + fp));
+                    totalTN.put(geoMapperEntry.getKey(), (int) (Math.ceil(totalTN.get(geoMapperEntry.getKey())) + tn));
+                    totalFN.put(geoMapperEntry.getKey(), (int) (Math.ceil(totalFN.get(geoMapperEntry.getKey())) + fn));
                 }
-            }
 
-            System.out.println("Time: " + totalTime);
+            }
+        }
+
+        for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
+            System.out.println(geoMapperEntry.getKey());
+
+            int tp = totalTP.get(geoMapperEntry.getKey());
+            int fp = totalFP.get(geoMapperEntry.getKey());
+            int tn = totalTN.get(geoMapperEntry.getKey());
+            int fn = totalFN.get(geoMapperEntry.getKey());
+
+            System.out.println("Time: " + totalTime.get(geoMapperEntry.getKey()));
             double precision = calculatePrecision(tp, fp, tn, fn);
             System.out.println("Precision:" + precision);
             double recall = calculateRecall(tp, fp, tn, fn);
             System.out.println("Recall:" + recall);
             double f = calculateFScore(tp, fp, tn, fn);
             System.out.println("F:" + f);
+            results.add(String.join(",", "", geoMapperEntry.getValue().getIndexingName(), geoMapperEntry.getValue().getMatcherName(), f + "", totalTime.get(geoMapperEntry.getKey()) + "", precision + "", recall + "", tp + "", fp + "", tn + "", fn + "", "", (tp + fp) + "", (tn + fn) + ""));
 
-
-            results.add(String.join(",", "", geoMapperEntry.getKey(), f + "", totalTime + "", precision + "", recall + "", tp + "", fp + "", tn + "", fn + "", "", (tp + fp) + "", (tn + fn) + ""));
         }
+
         results.add("");
     }
 
@@ -175,21 +220,21 @@ public class MultiFileBenchmark {
         return targetMap;
     }
 
-    public static double calculatePrecision(double tp, double fp, double tn, double fn){
-        if (tp + fp == 0){
+    public static double calculatePrecision(double tp, double fp, double tn, double fn) {
+        if (tp + fp == 0) {
             return 0;
         }
         return tp / (tp + fp);
     }
 
-    public static double calculateRecall(double tp, double fp, double tn, double fn){
-        if (tp + fn == 0){
+    public static double calculateRecall(double tp, double fp, double tn, double fn) {
+        if (tp + fn == 0) {
             return 0;
         }
         return tp / (tp + fn);
     }
 
-    public static double calculateFScore(double tp, double fp, double tn, double fn){
+    public static double calculateFScore(double tp, double fp, double tn, double fn) {
         double beta = 1.0D;
 
         double p = calculatePrecision(tp, fp, tn, fn);

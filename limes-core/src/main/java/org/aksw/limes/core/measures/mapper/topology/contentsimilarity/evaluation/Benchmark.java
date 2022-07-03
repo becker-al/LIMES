@@ -5,8 +5,16 @@ import org.aksw.limes.core.evaluation.qualititativeMeasures.APRF;
 import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
-import org.aksw.limes.core.io.mapping.MemoryMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.fullr.FullRTreeWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RTreeIndexing;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RTreeIndexingWithoutComputeCheck;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RadonIndexingMBB;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FARelater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FDRelater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FMRelater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.MbbOptimalRelater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.wrapper.AbstractWrapper;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
@@ -43,6 +51,8 @@ public class Benchmark {
         int numThreads = 1;
 
         test(baseDirectory, "NUTS", "NUTS", numThreads);
+        test(baseDirectory, "NUTS", "CLC_Subset_111", numThreads);
+        test(baseDirectory, "CLC_Subset_111", "CLC_Subset_111", numThreads);
         //test("NUTS", "NUTS", numThreads);
     }
 
@@ -56,9 +66,22 @@ public class Benchmark {
 
         //geoMapperMap.put("RADON", new RadonOnlyMBBWrapper());
 
-        geoMapperMap.put("FA", new FAWrapper());
-        geoMapperMap.put("FD", new FDWrapper());
-        geoMapperMap.put("FM", new FMWrapper());
+        geoMapperMap.put("FA_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FARelater()));
+        geoMapperMap.put("FD_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FDRelater()));
+        geoMapperMap.put("FM_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FMRelater()));
+        geoMapperMap.put("Optimal_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new MbbOptimalRelater()));
+
+        geoMapperMap.put("FA_RTREE_WITHOUTCHECK_MBB", new AbstractWrapper(new RTreeIndexingWithoutComputeCheck(), new FARelater()));
+        geoMapperMap.put("FD_RTREE_WITHOUTCHECK_MBB", new AbstractWrapper(new RTreeIndexingWithoutComputeCheck(), new FDRelater()));
+        geoMapperMap.put("FM_RTREE_WITHOUTCHECK_MBB", new AbstractWrapper(new RTreeIndexingWithoutComputeCheck(), new FMRelater()));
+        geoMapperMap.put("Optimal_RTREE_WITHOUTCHECK_MBB", new AbstractWrapper(new RTreeIndexingWithoutComputeCheck(), new MbbOptimalRelater()));
+
+
+        geoMapperMap.put("FA_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FARelater()));
+        geoMapperMap.put("FD_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FDRelater()));
+        geoMapperMap.put("FM_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FMRelater()));
+        geoMapperMap.put("Optimal_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new MbbOptimalRelater()));
+        geoMapperMap.put("RTREE_FULL", new FullRTreeWrapper());
 
         List<String> results = new ArrayList<>();
         for (String relation : RELATIONS) {
@@ -76,17 +99,25 @@ public class Benchmark {
         Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
         Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
 
-        results.add(relation + ",Algo,F,Time,Precision,Recall,TruePositive,FalsePositive,TrueNegative,FalseNegative,,Positive,Negative"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
+        results.add(relation + ",Indexing,Matcher,F,Time,Precision,Recall,TruePositive,FalsePositive,TrueNegative,FalseNegative,,Positive,Negative"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
 
         AMapping radon = null;
         GoldStandard goldStandard = null;
 
         for (Map.Entry<String, GeoMapper> geoMapperEntry : geoMapperMap.entrySet()) {
             System.gc();
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             System.out.println("------------------");
             System.out.println(geoMapperEntry.getKey() + " | " + relation);
             long start = System.currentTimeMillis();
-            AMapping mapping = geoMapperEntry.getValue().getMapping(sourceMap, targetMap, relation, numThreads);
+            AMapping mapping = null;
+            for (int i = 0; i < 1; i++) {
+                mapping = geoMapperEntry.getValue().getMapping(sourceMap, targetMap, relation, numThreads);
+            }
             long end = System.currentTimeMillis();
             long time = end - start;
             System.out.println("Time: " + time);
@@ -117,7 +148,7 @@ public class Benchmark {
             System.out.println("F:" + f);
 
 
-            results.add(String.join(",", "", geoMapperEntry.getKey(), f + "", time + "", precision + "", recall + "", tp + "", fp + "", tn + "", fn + "", "", (tp + fp) + "", (tn + fn) + ""));
+            results.add(String.join(",", "", geoMapperEntry.getValue().getIndexingName(), geoMapperEntry.getValue().getMatcherName(), f + "", time + "", precision + "", recall + "", tp + "", fp + "", tn + "", fn + "", "", (tp + fp) + "", (tn + fn) + ""));
         }
         results.add("");
     }
