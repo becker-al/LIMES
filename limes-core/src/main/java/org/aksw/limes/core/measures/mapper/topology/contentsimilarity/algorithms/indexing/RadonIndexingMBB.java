@@ -1,8 +1,8 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing;
 
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.io.mapping.MappingFactory;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.Relater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.Matcher;
 import org.locationtech.jts.geom.Envelope;
 
 import java.text.DecimalFormat;
@@ -126,26 +126,26 @@ public class RadonIndexingMBB implements Indexing {
     public static class MBBIndex {
 
         public int lat1, lat2, lon1, lon2;
-        public Envelope polygon;
+        public Envelope envelope;
         private String uri;
         private String origin_uri;
 
-        public MBBIndex(int lat1, int lon1, int lat2, int lon2, Envelope polygon, String uri) {
+        public MBBIndex(int lat1, int lon1, int lat2, int lon2, Envelope envelope, String uri) {
             this.lat1 = lat1;
             this.lat2 = lat2;
             this.lon1 = lon1;
             this.lon2 = lon2;
-            this.polygon = polygon;
+            this.envelope = envelope;
             this.uri = uri;
             this.origin_uri = uri;
         }
 
-        public MBBIndex(int lat1, int lon1, int lat2, int lon2, Envelope polygon, String uri, String origin_uri) {
+        public MBBIndex(int lat1, int lon1, int lat2, int lon2, Envelope envelope, String uri, String origin_uri) {
             this.lat1 = lat1;
             this.lat2 = lat2;
             this.lon1 = lon1;
             this.lon2 = lon2;
-            this.polygon = polygon;
+            this.envelope = envelope;
             this.uri = uri;
             this.origin_uri = origin_uri;
         }
@@ -206,17 +206,17 @@ public class RadonIndexingMBB implements Indexing {
         }
     }
 
-    public static class Matcher implements Runnable {
+    public static class RadonMatcher implements Runnable {
 
         public static int maxSize = 1000;
         private String relation;
         private final List<Map<String, Set<String>>> result;
         private List<MBBIndex> scheduled;
 
-        private static Relater relater;
+        private Matcher matcher;
 
-        public Matcher(Relater relater, String relation, List<Map<String, Set<String>>> result) {
-            this.relater = relater;
+        public RadonMatcher(Matcher matcher, String relation, List<Map<String, Set<String>>> result) {
+            this.matcher = matcher;
             this.relation = relation;
             this.result = result;
             this.scheduled = new ArrayList<>();
@@ -228,7 +228,7 @@ public class RadonIndexingMBB implements Indexing {
             for (int i = 0; i < scheduled.size(); i += 2) {
                 MBBIndex s = scheduled.get(i);
                 MBBIndex t = scheduled.get(i + 1);
-                if (relate(s.polygon, t.polygon, relation)) {
+                if (relate(s.envelope, t.envelope, relation)) {
                     if (!temp.containsKey(s.origin_uri)) {
                         temp.put(s.origin_uri, new HashSet<>());
                     }
@@ -249,8 +249,8 @@ public class RadonIndexingMBB implements Indexing {
             return scheduled.size();
         }
 
-        public static boolean relate(Envelope mbrA, Envelope mbrB, String relation) {
-            return relater.relate(mbrA, mbrB, relation);
+        public boolean relate(Envelope mbrA, Envelope mbrB, String relation) {
+            return matcher.relate(mbrA, mbrB, relation);
         }
 
     }
@@ -290,8 +290,8 @@ public class RadonIndexingMBB implements Indexing {
     // best measure according to our evaluation in the RADON paper
     public static String heuristicStatMeasure = "avg";
 
-    public AMapping getMapping(Relater relater, Map<String, Envelope> sourceData, Map<String, Envelope> targetData,
-                                      String relation, int numThreads) {
+    public AMapping getMapping(Matcher matcher, Map<String, Envelope> sourceData, Map<String, Envelope> targetData,
+                               String relation, int numThreads) {
         double thetaX, thetaY;
 
         // Relation thats actually used for computation.
@@ -345,7 +345,7 @@ public class RadonIndexingMBB implements Indexing {
         AMapping m = MappingFactory.createDefaultMapping();
         List<Map<String, Set<String>>> results = Collections.synchronizedList(new ArrayList<>());
         Map<String, Set<String>> computed = new HashMap<>();
-        Matcher matcher = new Matcher(relater, rel, results);
+        RadonMatcher radonMatcher = new RadonMatcher(matcher, rel, results);
 
         for (Integer lat : sourceIndex.map.keySet()) {
             for (Integer lon : sourceIndex.map.get(lat).keySet()) {
@@ -361,22 +361,32 @@ public class RadonIndexingMBB implements Indexing {
                         for (MBBIndex b : target) {
                             if (!computed.get(a.uri).contains(b.uri)) {
                                 computed.get(a.uri).add(b.uri);
-                                //System.out.println(" the new relation is: "+rel);
-                                if (numThreads == 1) {
+                                //                                //System.out.println(" the new relation is: "+rel);
+                                boolean compute = a.envelope.intersects(b.envelope)
+                                        &&(rel.equals(COVERS) && a.covers(b)
+                                        || (rel.equals(COVEREDBY) && b.covers(a))
+                                        || (rel.equals(CONTAINS) && a.contains(b))
+                                        || (rel.equals(WITHIN) && b.contains(a)) || (rel.equals(EQUALS) && a.equals(b))
+                                        || rel.equals(INTERSECTS) || rel.equals(TOUCHES)
+                                        || rel.equals(OVERLAPS))
+                                 ;
 
-                                    if (Matcher.relate(a.polygon, b.polygon, rel)) {
-                                        if (swapped)
-                                            m.add(b.origin_uri, a.origin_uri, 1.0);
-                                        else
-                                            m.add(a.origin_uri, b.origin_uri, 1.0);
-                                    }
-                                } else {
-                                    matcher.schedule(a, b);
-                                    if (matcher.size() == Matcher.maxSize) {
-                                        matchExec.execute(matcher);
-                                        matcher = new Matcher(relater, rel, results);
-                                        if (results.size() > 0) {
-                                            mergerExec.execute(new Merger(results, m));
+                                if(compute){
+                                    if (numThreads == 1) {
+                                        if (radonMatcher.relate(a.envelope, b.envelope, rel)) {
+                                            if (swapped)
+                                                m.add(b.origin_uri, a.origin_uri, 1.0);
+                                            else
+                                                m.add(a.origin_uri, b.origin_uri, 1.0);
+                                        }
+                                    } else {
+                                        radonMatcher.schedule(a, b);
+                                        if (radonMatcher.size() == RadonMatcher.maxSize) {
+                                            matchExec.execute(radonMatcher);
+                                            radonMatcher = new RadonMatcher(matcher, rel, results);
+                                            if (results.size() > 0) {
+                                                mergerExec.execute(new Merger(results, m));
+                                            }
                                         }
                                     }
                                 }
@@ -387,8 +397,8 @@ public class RadonIndexingMBB implements Indexing {
             }
         }
         if (numThreads > 1) {
-            if (matcher.size() > 0) {
-                matchExec.execute(matcher);
+            if (radonMatcher.size() > 0) {
+                matchExec.execute(radonMatcher);
             }
             matchExec.shutdown();
             while (!matchExec.isTerminated()) {
@@ -396,7 +406,7 @@ public class RadonIndexingMBB implements Indexing {
                     if (results.size() > 0) {
                         mergerExec.execute(new Merger(results, m));
                     }
-                    Thread.sleep(500);
+                    Thread.sleep(1);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -407,7 +417,7 @@ public class RadonIndexingMBB implements Indexing {
             mergerExec.shutdown();
             while (!mergerExec.isTerminated()) {
                 try {
-                    Thread.sleep(100);
+                    Thread.sleep(1);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

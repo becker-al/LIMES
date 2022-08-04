@@ -1,8 +1,8 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing;
 
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.io.mapping.MappingFactory;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.Relater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.Matcher;
 import org.locationtech.jts.geom.Envelope;
 
 import java.util.*;
@@ -10,11 +10,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class RTreeIndexingWithoutComputeCheck implements Indexing {
+public class RTreeIndexing implements Indexing {
 
 
     @Override
-    public AMapping getMapping(Relater relater, Map<String, Envelope> sourceData, Map<String, Envelope> targetData, String relation, int numThreads) {
+    public AMapping getMapping(Matcher relater, Map<String, Envelope> sourceData, Map<String, Envelope> targetData, String relation, int numThreads) {
         List<RTree.Entry> entries = new ArrayList<>(sourceData.size());
         sourceData.forEach((s, geometry) -> {
             entries.add(new RTree.Entry(s, geometry, null));
@@ -54,6 +54,7 @@ public class RTreeIndexingWithoutComputeCheck implements Indexing {
                 String finalRelation = relation;
                 AMapping finalM = m;
                 List<RTree.Entry> search = rTree.search(envelope);
+
                 search.stream()
                         .filter(x -> {
                                     Envelope abb = x.getEnvelope();
@@ -89,12 +90,11 @@ public class RTreeIndexingWithoutComputeCheck implements Indexing {
             }
             m = disjoint;
         }
-
         return m;
     }
 
     @Override
     public String getName() {
-        return "RTREE_WITHOUTCOMPUTE";
+        return "RTREE";
     }
 }

@@ -1,9 +1,9 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher;
 
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.ContentMeasure;
 import org.locationtech.jts.geom.Envelope;
 
-public class FARelater implements Relater {
+public class FAMatcher implements Matcher {
     @Override
     public boolean relate(Envelope mbrA, Envelope mbrB, String relation) {
         double X = ContentMeasure.fA(mbrA, mbrB);
@@ -33,7 +33,10 @@ public class FARelater implements Relater {
                     return false;
                 }
             case INTERSECTS:
-                if (!(0 < X && X < 1 && 0 < Y && Y < 1 && 0 < Z && Z < 1)) {
+                if (relate(X, Y, Z, EQUALS) || relate(X, Y, Z, TOUCHES) || relate(X, Y, Z, CONTAINS)
+                        || relate(X, Y, Z, COVERS) || relate(X, Y, Z, COVEREDBY) || relate(X, Y, Z, WITHIN)
+                        || relate(X, Y, Z, OVERLAPS)
+                ) {
                     return true;
                 } else {
                     return false;

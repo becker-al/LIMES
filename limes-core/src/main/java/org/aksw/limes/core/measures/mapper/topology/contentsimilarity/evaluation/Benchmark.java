@@ -6,19 +6,18 @@ import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.fullr.FullRTreeWrapper;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RTreeIndexing;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RTreeIndexingWithoutComputeCheck;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RadonIndexingMBB;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FARelater;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FDRelater;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.FMRelater;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.MbbOptimalRelater;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.wrapper.AbstractWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rtree_full.FullRTreeWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.giant.batchAlgorithms.GiantMBBWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.giant.batchAlgorithms.GiantWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.RTreeIndexing;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.RadonIndexingMBB;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.*;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.wrapper.CombinedGeoMapper;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
@@ -39,24 +38,22 @@ public class Benchmark {
     public static final String COVEREDBY = "coveredby";
 
     public static final String[] RELATIONS = new String[]{
-            EQUALS, DISJOINT, INTERSECTS, TOUCHES, WITHIN,
+            EQUALS, INTERSECTS, TOUCHES, WITHIN,
             CONTAINS,
-            OVERLAPS, COVERS, COVEREDBY
+            OVERLAPS
     };
 
 
     public static void main(String[] args) throws ParseException, IOException {
-        //String sourceName = "NUTS";
-        //String targetName = "CLC_Subset_111";
-        int numThreads = 1;
+        int numThreads = 8;
 
-        test(baseDirectory, "NUTS", "NUTS", numThreads);
-        test(baseDirectory, "NUTS", "CLC_Subset_111", numThreads);
-        test(baseDirectory, "CLC_Subset_111", "CLC_Subset_111", numThreads);
-        //test("NUTS", "NUTS", numThreads);
+        long time = System.currentTimeMillis();
+        test(baseDirectory, "NUTS", "NUTS", numThreads, "");
+        long end = System.currentTimeMillis();
+        System.out.println("TOOK " + (end - time) + " ms");
     }
 
-    public static void test(String baseDirectory, String sourceName, String targetName, int numThreads) throws ParseException, IOException {
+    public static void test(String baseDirectory, String sourceName, String targetName, int numThreads, String outputFile) throws ParseException, IOException {
         ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + sourceName + ".nt");
         ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + targetName + ".nt");
 
@@ -64,23 +61,17 @@ public class Benchmark {
         geoMapperMap.put("RADON", new RadonWrapper());
         geoMapperMap.put("RADON_MBB", new RadonOnlyMBBWrapper());
 
-        //geoMapperMap.put("RADON", new RadonOnlyMBBWrapper());
+        geoMapperMap.put("GIANT", new GiantWrapper());
+        geoMapperMap.put("GIANT_MBB", new GiantMBBWrapper());
 
-        geoMapperMap.put("FA_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FARelater()));
-        geoMapperMap.put("FD_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FDRelater()));
-        geoMapperMap.put("FM_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new FMRelater()));
-        geoMapperMap.put("Optimal_Radon_MBB", new AbstractWrapper(new RadonIndexingMBB(), new MbbOptimalRelater()));
+        geoMapperMap.put("FA_Radon_MBB", new CombinedGeoMapper(new RadonIndexingMBB(), new FAMatcher()));
+        geoMapperMap.put("FD_Radon_MBB", new CombinedGeoMapper(new RadonIndexingMBB(), new FDMatcher()));
+        geoMapperMap.put("FM_Radon_MBB", new CombinedGeoMapper(new RadonIndexingMBB(), new FMMatcher()));
 
-        geoMapperMap.put("FA_RTREE_WITHOUTCHECK_MBB", new AbstractWrapper(new RTreeIndexingWithoutComputeCheck(), new FARelater()));
-        geoMapperMap.put("FD_RTREE_WITHOUTCHECK_MBB", new AbstractWrapper(new RTreeIndexingWithoutComputeCheck(), new FDRelater()));
-        geoMapperMap.put("FM_RTREE_WITHOUTCHECK_MBB", new AbstractWrapper(new RTreeIndexingWithoutComputeCheck(), new FMRelater()));
-        geoMapperMap.put("Optimal_RTREE_WITHOUTCHECK_MBB", new AbstractWrapper(new RTreeIndexingWithoutComputeCheck(), new MbbOptimalRelater()));
+        geoMapperMap.put("FA_RTREE_MBB", new CombinedGeoMapper(new RTreeIndexing(), new FAMatcher()));
+        geoMapperMap.put("FD_RTREE_MBB", new CombinedGeoMapper(new RTreeIndexing(), new FDMatcher()));
+        geoMapperMap.put("FM_RTREE_MBB", new CombinedGeoMapper(new RTreeIndexing(), new FMMatcher()));
 
-
-        geoMapperMap.put("FA_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FARelater()));
-        geoMapperMap.put("FD_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FDRelater()));
-        geoMapperMap.put("FM_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new FMRelater()));
-        geoMapperMap.put("Optimal_RTREE_CUSTOM_MBB", new AbstractWrapper(new RTreeIndexing(), new MbbOptimalRelater()));
         geoMapperMap.put("RTREE_FULL", new FullRTreeWrapper());
 
         List<String> results = new ArrayList<>();
@@ -88,7 +79,7 @@ public class Benchmark {
             testForRelation(sourceWithoutSimplification, targetWithoutSimplification, relation, results, geoMapperMap, numThreads);
         }
 
-        log(results, sourceName, targetName, numThreads);
+        log(results, sourceName, targetName, numThreads, outputFile);
     }
 
     private static void testForRelation(ACache sourceWithoutSimplification, ACache targetWithoutSimplification, String relation, List<String> results, Map<String, GeoMapper> geoMapperMap, int numThreads) {
@@ -153,8 +144,8 @@ public class Benchmark {
         results.add("");
     }
 
-    public static void log(List<String> results, String sourceName, String targetName, int numThreads) throws IOException {
-        FileWriter writer = new FileWriter("results_" + sourceName + "_" + targetName + "_" + numThreads + ".csv");
+    public static void log(List<String> results, String sourceName, String targetName, int numThreads, String outputFile) throws IOException {
+        FileWriter writer = new FileWriter(new File(outputFile, "results_" + sourceName + "_" + targetName + "_" + numThreads + ".csv"));
         for (String str : results) {
             writer.write(str + System.lineSeparator());
         }

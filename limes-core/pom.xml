@@ -23,6 +23,14 @@
     <artifactId>limes-core</artifactId>
     <name>LIMES Core Library</name>
 
+    <repositories>
+        <repository>
+            <id>tu-darmstadt-trove</id>
+            <name>fortrove</name>
+            <url>https://zoidberg.ukp.informatik.tu-darmstadt.de/artifactory/public-releases</url>
+        </repository>
+    </repositories>
+
     <build>
         <plugins>
             <plugin>
@@ -461,6 +469,14 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+<!--        For Giant-->
+        <dependency>
+            <groupId>gnu.trove</groupId>
+            <artifactId>trove</artifactId>
+            <version>3.0.3</version>
+        </dependency>
+
     </dependencies>
 
 

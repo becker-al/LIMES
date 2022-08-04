@@ -1,12 +1,8 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher;
 
-import org.aksw.limes.core.io.mapping.AMapping;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.Relater;
 import org.locationtech.jts.geom.Envelope;
 
-import java.util.Map;
-
-public interface Indexing {
+public interface Matcher {
     public static final String EQUALS = "equals";
     public static final String DISJOINT = "disjoint";
     public static final String INTERSECTS = "intersects";
@@ -18,8 +14,8 @@ public interface Indexing {
     public static final String COVERS = "covers";
     public static final String COVEREDBY = "coveredby";
 
-    public AMapping getMapping(Relater relater, Map<String, Envelope> sourceData, Map<String, Envelope> targetData,
-                               String relation, int numThreads);
+    public boolean relate(Envelope mbrA, Envelope mbrB, String relation);
 
     String getName();
+
 }

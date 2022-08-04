@@ -1,7 +1,6 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.fullr;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rtree_full;
 
 import org.aksw.limes.core.io.mapping.AMapping;
-import org.aksw.limes.core.measures.mapper.topology.RADON;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.GeoMapper;
 import org.locationtech.jts.geom.Geometry;
 
@@ -21,7 +20,7 @@ public class FullRTreeWrapper implements GeoMapper {
 
     @Override
     public String getMatcherName() {
-        return "Intersection";
+        return "DE-9IM";
     }
 
 }

@@ -1,10 +1,8 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.fullr;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rtree_full;
 
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.io.mapping.MappingFactory;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.Indexing;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.indexing.RTree;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater.Relater;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.RTree;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 
@@ -53,28 +51,29 @@ public class FullRTreeIndexing {
                 results.put(uri, value);
                 String finalRelation = relation;
 
-                exec.submit(() -> {
                     List<RTree.Entry> search = rTree.search(envelope);
-                    search.stream()
-                            .filter(x -> {
-                                        Envelope abb = x.getEnvelope();
-                                        Envelope bbb = envelope;
-                                        boolean compute = (finalRelation.equals(COVERS) && abb.covers(bbb))
-                                                || (finalRelation.equals(COVEREDBY) && bbb.covers(abb))
-                                                || (finalRelation.equals(CONTAINS) && abb.contains(bbb))
-                                                || (finalRelation.equals(WITHIN) && bbb.contains(abb)) || (finalRelation.equals(EQUALS) && abb.equals(bbb))
-                                                || finalRelation.equals(INTERSECTS) || finalRelation.equals(TOUCHES)
-                                                || finalRelation.equals(OVERLAPS);
-                                        if(compute){
-                                            Geometry geoA = x.getGeometry();
-                                            Geometry geoB = entry.getValue();
-                                            return relate(geoA, geoB, finalRelation);
-                                        }else{
-                                            return false;
-                                        }
-                                    }
-                            ).forEach(x -> value.add(x.getUri()));
-                });
+                for (RTree.Entry x : search) {
+                    exec.submit(() -> {
+                        Envelope abb = x.getEnvelope();
+                        Envelope bbb = envelope;
+                        boolean compute = (finalRelation.equals(COVERS) && abb.covers(bbb))
+                                || (finalRelation.equals(COVEREDBY) && bbb.covers(abb))
+                                || (finalRelation.equals(CONTAINS) && abb.contains(bbb))
+                                || (finalRelation.equals(WITHIN) && bbb.contains(abb)) || (finalRelation.equals(EQUALS) && abb.equals(bbb))
+                                || finalRelation.equals(INTERSECTS) || finalRelation.equals(TOUCHES)
+                                || finalRelation.equals(OVERLAPS);
+                        if(compute){
+                            Geometry geoA = x.getGeometry();
+                            Geometry geoB = entry.getValue();
+                            boolean related = relate(geoA, geoB, finalRelation);
+                            if(related){
+                                synchronized (value){
+                                    value.add(x.getUri());
+                                }
+                            }
+                        }
+                    });
+                }
             } else {
                 String finalRelation = relation;
                 AMapping finalM = m;

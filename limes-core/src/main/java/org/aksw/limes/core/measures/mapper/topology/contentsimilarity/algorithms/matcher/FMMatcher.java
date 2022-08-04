@@ -1,9 +1,9 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.flexible.relater;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher;
 
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.ContentMeasure;
 import org.locationtech.jts.geom.Envelope;
 
-public class FMRelater implements Relater {
+public class FMMatcher implements Matcher {
 
     public boolean relate(Envelope mbrA, Envelope mbrB, String relation) {
         double X = ContentMeasure.fM(mbrA, mbrB);
@@ -34,7 +34,10 @@ public class FMRelater implements Relater {
                     return false;
                 }
             case INTERSECTS:
-                if (!(1 < X && 1 < Y)) {
+                if (relate(X, Y, Z, EQUALS) || relate(X, Y, Z, TOUCHES) || relate(X, Y, Z, CONTAINS)
+                        || relate(X, Y, Z, COVERS) || relate(X, Y, Z, COVEREDBY) || relate(X, Y, Z, WITHIN)
+                        || relate(X, Y, Z, OVERLAPS)
+                ) {
                     return true;
                 } else {
                     return false;
@@ -48,11 +51,11 @@ public class FMRelater implements Relater {
 
             case CONTAINS:
             case COVERS:
-                return (Math.abs(X) < 1 && Y == -1) || (Math.abs(X) < 1 && Y < -1) || relate(X,Y,Z,EQUALS);
+                return (Math.abs(X) < 1 && Y == -1) || (Math.abs(X) < 1 && Y < -1) || relate(X, Y, Z, EQUALS);
 
             case WITHIN:
             case COVEREDBY:
-                return (X < -1 && Math.abs(Y) < 1) || (X == -1 && Math.abs(Y) < 1) || relate(X,Y,Z,EQUALS);
+                return (X < -1 && Math.abs(Y) < 1) || (X == -1 && Math.abs(Y) < 1) || relate(X, Y, Z, EQUALS);
 
             case OVERLAPS:
                 if (Math.abs(X) < 1 && Math.abs(Y) < 1) {
