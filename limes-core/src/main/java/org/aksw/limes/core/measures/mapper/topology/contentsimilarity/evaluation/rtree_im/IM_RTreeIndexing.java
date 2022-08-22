@@ -1,4 +1,4 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rtree_full;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rtree_im;
 
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.io.mapping.MappingFactory;
@@ -11,7 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class FullRTreeIndexing {
+public class IM_RTreeIndexing {
 
     public static final String EQUALS = "equals";
     public static final String DISJOINT = "disjoint";

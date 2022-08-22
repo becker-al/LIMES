@@ -6,7 +6,7 @@ import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rtree_full.FullRTreeWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rtree_im.IM_RTreeWrapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.giant.batchAlgorithms.GiantMBBWrapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.giant.batchAlgorithms.GiantWrapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.RTreeIndexing;
@@ -24,8 +24,6 @@ import java.util.*;
 
 public class Benchmark {
 
-    private static final String baseDirectory = "P:\\Cloud\\Studium\\22_Bachelorarbeit\\GeoConverter\\";
-
     public static final String EQUALS = "equals";
     public static final String DISJOINT = "disjoint";
     public static final String INTERSECTS = "intersects";
@@ -42,16 +40,6 @@ public class Benchmark {
             CONTAINS,
             OVERLAPS
     };
-
-
-    public static void main(String[] args) throws ParseException, IOException {
-        int numThreads = 8;
-
-        long time = System.currentTimeMillis();
-        test(baseDirectory, "NUTS", "NUTS", numThreads, "");
-        long end = System.currentTimeMillis();
-        System.out.println("TOOK " + (end - time) + " ms");
-    }
 
     public static void test(String baseDirectory, String sourceName, String targetName, int numThreads, String outputFile) throws ParseException, IOException {
         ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + sourceName + ".nt");
@@ -72,7 +60,12 @@ public class Benchmark {
         geoMapperMap.put("FD_RTREE_MBB", new CombinedGeoMapper(new RTreeIndexing(), new FDMatcher()));
         geoMapperMap.put("FM_RTREE_MBB", new CombinedGeoMapper(new RTreeIndexing(), new FMMatcher()));
 
-        geoMapperMap.put("RTREE_FULL", new FullRTreeWrapper());
+        geoMapperMap.put("RTREE_FULL", new IM_RTreeWrapper());
+
+        double[] simplValues = new double[]{0.05, 0.1, 0.2};
+        for (double value : simplValues) {
+            geoMapperMap.put("RADON_SIMPLIFIED_"+value, new RadonSimplifiedWrapper(value));
+        }
 
         List<String> results = new ArrayList<>();
         for (String relation : RELATIONS) {
@@ -145,6 +138,10 @@ public class Benchmark {
     }
 
     public static void log(List<String> results, String sourceName, String targetName, int numThreads, String outputFile) throws IOException {
+        File file = new File(outputFile);
+        if(!file.exists()){
+            file.mkdirs();
+        }
         FileWriter writer = new FileWriter(new File(outputFile, "results_" + sourceName + "_" + targetName + "_" + numThreads + ".csv"));
         for (String str : results) {
             writer.write(str + System.lineSeparator());
