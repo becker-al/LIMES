@@ -1,4 +1,4 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.radon;
 
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.measures.mapper.topology.RADON;

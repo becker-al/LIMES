@@ -6,6 +6,9 @@ import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.radon.RadonOnlyMBBWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.radon.RadonSimplifiedWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.radon.RadonWrapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rtree_im.IM_RTreeWrapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.giant.batchAlgorithms.GiantMBBWrapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.giant.batchAlgorithms.GiantWrapper;
@@ -42,8 +45,8 @@ public class Benchmark {
     };
 
     public static void test(String baseDirectory, String sourceName, String targetName, int numThreads, String outputFile) throws ParseException, IOException {
-        ACache sourceWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + sourceName + ".nt");
-        ACache targetWithoutSimplification = PolygonSimplification.cacheWithoutSimplification(baseDirectory + targetName + ".nt");
+        ACache sourceWithoutSimplification = PolygonReader.cachePolygons(baseDirectory + sourceName + ".nt");
+        ACache targetWithoutSimplification = PolygonReader.cachePolygons(baseDirectory + targetName + ".nt");
 
         Map<String, GeoMapper> geoMapperMap = new LinkedHashMap<>();
         geoMapperMap.put("RADON", new RadonWrapper());
@@ -64,7 +67,7 @@ public class Benchmark {
 
         double[] simplValues = new double[]{0.05, 0.1, 0.2};
         for (double value : simplValues) {
-            geoMapperMap.put("RADON_SIMPLIFIED_"+value, new RadonSimplifiedWrapper(value));
+            geoMapperMap.put("RADON_SIMPLIFIED_" + value, new RadonSimplifiedWrapper(value));
         }
 
         List<String> results = new ArrayList<>();
@@ -118,7 +121,6 @@ public class Benchmark {
             }
 
 
-
             double tp = APRF.trueFalsePositive(mapping, radon, true);
             double fp = APRF.trueFalsePositive(mapping, radon, false);
             double tn = APRF.trueNegative(mapping, goldStandard);
@@ -139,7 +141,7 @@ public class Benchmark {
 
     public static void log(List<String> results, String sourceName, String targetName, int numThreads, String outputFile) throws IOException {
         File file = new File(outputFile);
-        if(!file.exists()){
+        if (!file.exists()) {
             file.mkdirs();
         }
         FileWriter writer = new FileWriter(new File(outputFile, "results_" + sourceName + "_" + targetName + "_" + numThreads + ".csv"));
@@ -167,6 +169,7 @@ public class Benchmark {
         return gMap;
     }
 
+    //Code taken from RADON
     public static Map<String, Geometry> createSourceMap(ACache source, String expression, double threshold) {
         if (threshold <= 0) {
             throw new InvalidThresholdException(threshold);
@@ -176,6 +179,7 @@ public class Benchmark {
         return sourceMap;
     }
 
+    //Code taken from RADON
     public static Map<String, Geometry> createTargetMap(ACache target, String expression, double threshold) {
         if (threshold <= 0) {
             throw new InvalidThresholdException(threshold);
@@ -185,32 +189,28 @@ public class Benchmark {
         return targetMap;
     }
 
-    public static double calculatePrecision(double tp, double fp, double tn, double fn){
-        if (tp + fp == 0){
+    public static double calculatePrecision(double tp, double fp, double tn, double fn) {
+        if (tp + fp == 0) {
             return 0;
         }
         return tp / (tp + fp);
     }
 
-    public static double calculateRecall(double tp, double fp, double tn, double fn){
-        if (tp + fn == 0){
+    public static double calculateRecall(double tp, double fp, double tn, double fn) {
+        if (tp + fn == 0) {
             return 0;
         }
         return tp / (tp + fn);
     }
 
-    public static double calculateFScore(double tp, double fp, double tn, double fn){
-        double beta = 1.0D;
-
+    public static double calculateFScore(double tp, double fp, double tn, double fn) {
         double p = calculatePrecision(tp, fp, tn, fn);
         double r = calculateRecall(tp, fp, tn, fn);
-        double beta2 = Math.pow(beta, 2);
-
-        if (p + r > 0d)
-            return (1 + beta2) * p * r / ((beta2 * p) + r);
-        else
+        if (p + r > 0d) {
+            return (1 + 1.0D) * p * r / (p + r);
+        } else {
             return 0d;
-
+        }
     }
 
 }

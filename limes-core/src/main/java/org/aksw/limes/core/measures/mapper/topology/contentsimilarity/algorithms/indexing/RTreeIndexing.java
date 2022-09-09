@@ -10,6 +10,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Some parts of this class regarding the disjoint strategy are taken from RADON / kdressler
+ * @see org.aksw.limes.core.measures.mapper.topology.RADON
+ */
 public class RTreeIndexing implements Indexing {
 
 

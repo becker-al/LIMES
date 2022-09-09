@@ -10,7 +10,10 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-
+/**
+ * Most parts of this class are taken from RADON / kdressler
+ * @see org.aksw.limes.core.measures.mapper.topology.RADON
+ */
 public class RadonIndexingMBB implements Indexing {
 
 
