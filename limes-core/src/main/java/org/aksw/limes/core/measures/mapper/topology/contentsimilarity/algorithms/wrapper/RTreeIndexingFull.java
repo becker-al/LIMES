@@ -1,28 +1,24 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.wrapper;
 
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.io.mapping.MappingFactory;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.RTree;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeSTR;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.Matcher;
 import org.locationtech.jts.geom.Envelope;
+import org.locationtech.jts.geom.Geometry;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Some parts of this class regarding the disjoint strategy are taken from RADON / kdressler
- * @see org.aksw.limes.core.measures.mapper.topology.RADON
- */
-public class RTreeIndexing implements Indexing {
-
+public class RTreeIndexingFull implements IndexingFull {
 
     @Override
-    public AMapping getMapping(Matcher relater, Map<String, Envelope> sourceData, Map<String, Envelope> targetData, String relation, int numThreads) {
+    public AMapping getMapping(MatcherFull relater, Map<String, Geometry> sourceData, Map<String, Geometry> targetData, String relation, int numThreads) {
         List<RTreeSTR.Entry> entries = new ArrayList<>(sourceData.size());
         sourceData.forEach((s, geometry) -> {
-            entries.add(new RTreeSTR.Entry(s, geometry, null));
+            entries.add(new RTreeSTR.Entry(s, geometry.getEnvelopeInternal(), geometry));
         });
 
         boolean disjointStrategy = relation.equals(DISJOINT);
@@ -32,14 +28,16 @@ public class RTreeIndexing implements Indexing {
         RTree rTree = new RTreeSTR();
         rTree.build(entries);
 
+
         AMapping m = MappingFactory.createDefaultMapping();
 
         ExecutorService exec = Executors.newFixedThreadPool(numThreads);
         Map<String, Set<String>> results = new HashMap<>(); //Target -> Source Mappings
 
-        for (Map.Entry<String, Envelope> entry : targetData.entrySet()) {
+        for (Map.Entry<String, Geometry> entry : targetData.entrySet()) {
             String uri = entry.getKey();
-            Envelope envelope = entry.getValue();
+            Geometry geoEntry = entry.getValue();
+            Envelope envelope = geoEntry.getEnvelopeInternal();
 
             if (numThreads > 1) {
                 HashSet<String> value = new HashSet<>();
@@ -49,11 +47,7 @@ public class RTreeIndexing implements Indexing {
                 exec.submit(() -> {
                     List<RTreeSTR.Entry> search = rTree.search(envelope);
                     search.stream()
-                            .filter(x -> {
-                                        Envelope abb = x.getEnvelope();
-                                        Envelope bbb = envelope;
-                                        return relater.relate(abb, bbb, finalRelation);
-                                    }
+                            .filter(x -> relater.relate(x.getUri(), x.getGeometry(), uri, geoEntry, finalRelation)
                             ).forEach(x -> value.add(x.getUri()));
                 });
             } else {
@@ -62,11 +56,7 @@ public class RTreeIndexing implements Indexing {
                 List<RTreeSTR.Entry> search = rTree.search(envelope);
 
                 search.stream()
-                        .filter(x -> {
-                                    Envelope abb = x.getEnvelope();
-                                    Envelope bbb = envelope;
-                                    return relater.relate(abb, bbb, finalRelation);
-                                }
+                        .filter(x -> relater.relate(x.getUri(), x.getGeometry(), uri, geoEntry, finalRelation)
                         ).forEach(x -> finalM.add(x.getUri(), uri, 1.0));
             }
         }
@@ -101,6 +91,7 @@ public class RTreeIndexing implements Indexing {
 
     @Override
     public String getName() {
-        return "RTREE";
+        return "RTREE-FULL";
     }
+
 }

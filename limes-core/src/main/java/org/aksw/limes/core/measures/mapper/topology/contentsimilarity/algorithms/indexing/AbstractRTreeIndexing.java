@@ -7,32 +7,35 @@ import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms
 import org.locationtech.jts.geom.Envelope;
 
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
-/**
- * Some parts of this class regarding the disjoint strategy are taken from RADON / kdressler
- * @see org.aksw.limes.core.measures.mapper.topology.RADON
- */
-public class RTreeIndexing implements Indexing {
+public class AbstractRTreeIndexing implements Indexing{
 
+    private Callable<RTree> treeBuilder;
+
+    public AbstractRTreeIndexing(Callable <RTree> treeBuilder) {
+        this.treeBuilder = treeBuilder;
+    }
 
     @Override
     public AMapping getMapping(Matcher relater, Map<String, Envelope> sourceData, Map<String, Envelope> targetData, String relation, int numThreads) {
-        List<RTreeSTR.Entry> entries = new ArrayList<>(sourceData.size());
+        List<RTree.Entry> entries = new ArrayList<>(sourceData.size());
         sourceData.forEach((s, geometry) -> {
-            entries.add(new RTreeSTR.Entry(s, geometry, null));
+            entries.add(new RTree.Entry(s, geometry, null));
         });
 
-        boolean disjointStrategy = relation.equals(DISJOINT);
-        if (disjointStrategy)
-            relation = INTERSECTS;
-
-        RTree rTree = new RTreeSTR();
-        rTree.build(entries);
-
         AMapping m = MappingFactory.createDefaultMapping();
+        RTree rTree = null;
+        try {
+            rTree = treeBuilder.call();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        rTree.build(entries);
 
         ExecutorService exec = Executors.newFixedThreadPool(numThreads);
         Map<String, Set<String>> results = new HashMap<>(); //Target -> Source Mappings
@@ -46,8 +49,9 @@ public class RTreeIndexing implements Indexing {
                 results.put(uri, value);
                 String finalRelation = relation;
 
+                RTree finalRTree = rTree;
                 exec.submit(() -> {
-                    List<RTreeSTR.Entry> search = rTree.search(envelope);
+                    List<RTree.Entry> search = finalRTree.search(envelope);
                     search.stream()
                             .filter(x -> {
                                         Envelope abb = x.getEnvelope();
@@ -55,11 +59,14 @@ public class RTreeIndexing implements Indexing {
                                         return relater.relate(abb, bbb, finalRelation);
                                     }
                             ).forEach(x -> value.add(x.getUri()));
+                    if(relation.equals(DISJOINT)){
+                        value.addAll(finalRTree.searchExcept(envelope).stream().map(RTree.Entry::getUri).collect(Collectors.toList()));
+                    }
                 });
             } else {
                 String finalRelation = relation;
                 AMapping finalM = m;
-                List<RTreeSTR.Entry> search = rTree.search(envelope);
+                List<RTree.Entry> search = rTree.search(envelope);
 
                 search.stream()
                         .filter(x -> {
@@ -68,6 +75,9 @@ public class RTreeIndexing implements Indexing {
                                     return relater.relate(abb, bbb, finalRelation);
                                 }
                         ).forEach(x -> finalM.add(x.getUri(), uri, 1.0));
+                if(relation.equals(DISJOINT)){
+                    rTree.searchExcept(envelope).stream().map(RTree.Entry::getUri).forEach(sourceUri -> finalM.add(sourceUri, uri, 1.0));
+                }
             }
         }
         if (numThreads > 1) {
@@ -85,17 +95,6 @@ public class RTreeIndexing implements Indexing {
             }
         }
 
-        if (disjointStrategy) {
-            AMapping disjoint = MappingFactory.createDefaultMapping();
-            for (String s : sourceData.keySet()) {
-                for (String t : targetData.keySet()) {
-                    if (!m.contains(s, t)) {
-                        disjoint.add(s, t, 1.0d);
-                    }
-                }
-            }
-            m = disjoint;
-        }
         return m;
     }
 

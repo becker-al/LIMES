@@ -3,6 +3,7 @@ package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluatio
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.io.mapping.MappingFactory;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.RTree;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeSTR;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 
@@ -30,16 +31,17 @@ public class IM_RTreeIndexing {
 
 
     public static AMapping getMapping(Map<String, Geometry> sourceData, Map<String, Geometry> targetData, String relation, int numThreads) {
-        List<RTree.Entry> entries = new ArrayList<>(sourceData.size());
+        List<RTreeSTR.Entry> entries = new ArrayList<>(sourceData.size());
         sourceData.forEach((s, geometry) -> {
-            entries.add(new RTree.Entry(s, geometry.getEnvelopeInternal(), geometry));
+            entries.add(new RTreeSTR.Entry(s, geometry.getEnvelopeInternal(), geometry));
         });
 
         boolean disjointStrategy = relation.equals(DISJOINT);
         if (disjointStrategy)
             relation = INTERSECTS;
 
-        RTree rTree = RTree.buildSTR(entries);
+        RTree rTree = new RTreeSTR();
+        rTree.build(entries);
 
         AMapping m = MappingFactory.createDefaultMapping();
 
@@ -55,8 +57,8 @@ public class IM_RTreeIndexing {
                 results.put(uri, value);
                 String finalRelation = relation;
 
-                    List<RTree.Entry> search = rTree.search(envelope);
-                for (RTree.Entry x : search) {
+                    List<RTreeSTR.Entry> search = rTree.search(envelope);
+                for (RTreeSTR.Entry x : search) {
                     exec.submit(() -> {
                         Envelope abb = x.getEnvelope();
                         Envelope bbb = envelope;
@@ -81,7 +83,7 @@ public class IM_RTreeIndexing {
             } else {
                 String finalRelation = relation;
                 AMapping finalM = m;
-                List<RTree.Entry> search = rTree.search(envelope);
+                List<RTreeSTR.Entry> search = rTree.search(envelope);
                 search.stream()
                         .filter(x -> {
                                     Envelope abb = x.getEnvelope();

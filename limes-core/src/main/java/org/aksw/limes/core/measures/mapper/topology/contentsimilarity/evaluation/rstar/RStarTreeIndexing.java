@@ -1,7 +1,12 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rstar;
 
+import com.github.davidmoten.rtree.RTree;
+import com.github.davidmoten.rtree.geometry.Geometries;
+import com.github.davidmoten.rtree.geometry.Geometry;
+import com.github.davidmoten.rtree.geometry.Rectangle;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.io.mapping.MappingFactory;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.Indexing;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeSTR;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.Matcher;
 import org.locationtech.jts.geom.Envelope;
@@ -15,22 +20,26 @@ import java.util.concurrent.TimeUnit;
  * Some parts of this class regarding the disjoint strategy are taken from RADON / kdressler
  * @see org.aksw.limes.core.measures.mapper.topology.RADON
  */
-public class RTreeIndexing implements Indexing {
+public class RStarTreeIndexing implements Indexing {
 
+    int capacity;
+
+    public RStarTreeIndexing(int capacity) {
+        this.capacity = capacity;
+    }
 
     @Override
     public AMapping getMapping(Matcher relater, Map<String, Envelope> sourceData, Map<String, Envelope> targetData, String relation, int numThreads) {
-        List<RTreeSTR.Entry> entries = new ArrayList<>(sourceData.size());
-        sourceData.forEach((s, geometry) -> {
-            entries.add(new RTreeSTR.Entry(s, geometry, null));
-        });
+        RTree<String, Rectangle> tree = RTree.star().maxChildren(capacity).create();
+        for (Map.Entry<String, Envelope> entry : sourceData.entrySet()) {
+            String s = entry.getKey();
+            Envelope geometry = entry.getValue();
+            tree = tree.add(s, Geometries.rectangle(geometry.getMinX(), geometry.getMinY(), geometry.getMaxX(), geometry.getMaxY()));
+        }
 
         boolean disjointStrategy = relation.equals(DISJOINT);
         if (disjointStrategy)
             relation = INTERSECTS;
-
-        RTree rTree = new RTreeSTR();
-        rTree.build(entries);
 
         AMapping m = MappingFactory.createDefaultMapping();
 
@@ -46,28 +55,26 @@ public class RTreeIndexing implements Indexing {
                 results.put(uri, value);
                 String finalRelation = relation;
 
+                RTree<String, Rectangle> finalTree = tree;
                 exec.submit(() -> {
-                    List<RTreeSTR.Entry> search = rTree.search(envelope);
-                    search.stream()
+                    finalTree.search(Geometries.rectangle(envelope.getMinX(), envelope.getMinY(), envelope.getMaxX(), envelope.getMaxY()))
                             .filter(x -> {
-                                        Envelope abb = x.getEnvelope();
+                                        Envelope abb = new Envelope(x.geometry().x1(), x.geometry().x2(), x.geometry().y1(), x.geometry().y2());
                                         Envelope bbb = envelope;
                                         return relater.relate(abb, bbb, finalRelation);
                                     }
-                            ).forEach(x -> value.add(x.getUri()));
+                            ).forEach(x -> value.add(x.value()));
                 });
             } else {
                 String finalRelation = relation;
                 AMapping finalM = m;
-                List<RTreeSTR.Entry> search = rTree.search(envelope);
-
-                search.stream()
+                tree.search(Geometries.rectangle(envelope.getMinX(), envelope.getMinY(), envelope.getMaxX(), envelope.getMaxY()))
                         .filter(x -> {
-                                    Envelope abb = x.getEnvelope();
+                                    Envelope abb = new Envelope(x.geometry().x1(), x.geometry().x2(), x.geometry().y1(), x.geometry().y2());
                                     Envelope bbb = envelope;
                                     return relater.relate(abb, bbb, finalRelation);
                                 }
-                        ).forEach(x -> finalM.add(x.getUri(), uri, 1.0));
+                        ).forEach(x -> finalM.add(x.value(), uri, 1.0));
             }
         }
         if (numThreads > 1) {
