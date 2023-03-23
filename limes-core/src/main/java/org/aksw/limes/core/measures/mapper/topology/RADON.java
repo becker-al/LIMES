@@ -274,7 +274,7 @@ public class RADON {
             return scheduled.size();
         }
 
-        private static Boolean relate(Geometry geometry1, Geometry geometry2, String relation) {
+        public static Boolean relate(Geometry geometry1, Geometry geometry2, String relation) {
             switch (relation) {
                 case EQUALS:
                     return geometry1.equals(geometry2);
@@ -506,7 +506,7 @@ public class RADON {
                     if (results.size() > 0) {
                         mergerExec.execute(new Merger(results, m));
                     }
-                    Thread.sleep(500);
+                    Thread.sleep(1);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -517,7 +517,7 @@ public class RADON {
             mergerExec.shutdown();
             while (!mergerExec.isTerminated()) {
                 try {
-                    Thread.sleep(100);
+                    Thread.sleep(1);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

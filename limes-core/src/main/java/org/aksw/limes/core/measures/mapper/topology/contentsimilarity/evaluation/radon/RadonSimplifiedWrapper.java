@@ -22,7 +22,7 @@ public class RadonSimplifiedWrapper implements GeoMapper {
     public AMapping getMapping(Map<String, Geometry> sourceData, Map<String, Geometry> targetData, String relation, int numThreads) {
         Map<String, Geometry> sourceSimpl = new HashMap<>();
         Map<String, Geometry> targetSimpl = new HashMap<>();
-
+        long time = System.currentTimeMillis();
         sourceData.forEach((s, geometry) -> {
             Geometry simplify = TopologyPreservingSimplifier.simplify(geometry, value);
             if(!simplify.isValid()){
@@ -37,7 +37,8 @@ public class RadonSimplifiedWrapper implements GeoMapper {
             }
             targetSimpl.put(s, simplify);
         });
-
+        long duration = System.currentTimeMillis() - time;
+        System.out.println("Simplification with param " + value + " took: " + duration);
         return RADON.getMapping(sourceSimpl, targetSimpl, relation, numThreads);
     }
 
