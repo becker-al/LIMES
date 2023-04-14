@@ -1,4 +1,4 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.splitcontentmeasuretest;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.cobalt_split;
 
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.Matcher;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.wrapper.MatcherFull;
@@ -13,11 +13,9 @@ import static org.junit.Assert.assertTrue;
 
 public class Quadsplit implements MatcherFull {
 
-    private Map<String, Envelope[][]> splittedA = new ConcurrentHashMap<>();
-    private Map<String, Envelope[][]> splittedB = new ConcurrentHashMap<>();
+    private Map<String, Envelope[][]> splitA = new ConcurrentHashMap<>();
+    private Map<String, Envelope[][]> splitB = new ConcurrentHashMap<>();
     private GeometryFactory factory = new GeometryFactory();
-    private Geometry emptyGeo;
-    private Geometry[][] empty2x2Geo;
     private int splitTimes;
     private Splitter splitter;
     private Matcher matcher;
@@ -27,33 +25,24 @@ public class Quadsplit implements MatcherFull {
         this.splitTimes = splitTimes;
         this.splitter = splitter;
         this.matcher = matcher;
-        this.emptyGeo = factory.createPolygon();
-        this.empty2x2Geo = new Geometry[][]{
-                new Geometry[]{
-                        emptyGeo, emptyGeo
-                },
-                new Geometry[]{
-                        emptyGeo, emptyGeo
-                }
-        };
     }
 
     @Override
     public boolean relate(String uriA, Geometry geoA, String uriB, Geometry geoB, String relation) {
         Envelope[][] splitA;
-        if (splittedA.containsKey(uriA)) {
-            splitA = splittedA.get(uriA);
+        if (this.splitA.containsKey(uriA)) {
+            splitA = this.splitA.get(uriA);
         } else {
             splitA = splitter.getSplit(geoA, splitTimes);
-            splittedA.put(uriA, splitA);
+            this.splitA.put(uriA, splitA);
         }
 
         Envelope[][] splitB;
-        if (splittedB.containsKey(uriB)) {
-            splitB = splittedB.get(uriB);
+        if (this.splitB.containsKey(uriB)) {
+            splitB = this.splitB.get(uriB);
         } else {
             splitB = splitter.getSplit(geoB, splitTimes);
-            splittedB.put(uriB, splitB);
+            this.splitB.put(uriB, splitB);
         }
 
 
@@ -236,12 +225,12 @@ public class Quadsplit implements MatcherFull {
 
     @Override
     public String getName() {
-        return "QuadsplitFA";
+        return "CobaltSplit";
     }
 
     @Override
     public void reset() {
-        splittedA = new ConcurrentHashMap<>();
-        splittedB = new ConcurrentHashMap<>();
+        splitA = new ConcurrentHashMap<>();
+        splitB = new ConcurrentHashMap<>();
     }
 }

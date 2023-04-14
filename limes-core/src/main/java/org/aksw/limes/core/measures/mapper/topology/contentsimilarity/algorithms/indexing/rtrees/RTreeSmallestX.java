@@ -6,13 +6,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class RTreeNearestX extends AbstractRTree {
+public class RTreeSmallestX extends AbstractRTree {
 
 
-    public RTreeNearestX() {
+    public RTreeSmallestX() {
     }
 
-    public RTreeNearestX(int capacity) {
+    public RTreeSmallestX(int capacity) {
         super(capacity);
     }
 
@@ -28,7 +28,7 @@ public class RTreeNearestX extends AbstractRTree {
             return createStaticParent(entries, capacity);
         }
         if(entries.size() == 0){
-            return new RTreeNearestX();
+            return new RTreeSmallestX();
         }
 
         //When we have more entries than capacity

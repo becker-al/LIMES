@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 public class RadonSimplifiedWrapper implements GeoMapper {
 
-    double value;
+    private double value;
 
     public RadonSimplifiedWrapper(double value) {
         this.value = value;
@@ -25,16 +25,10 @@ public class RadonSimplifiedWrapper implements GeoMapper {
         long time = System.currentTimeMillis();
         sourceData.forEach((s, geometry) -> {
             Geometry simplify = TopologyPreservingSimplifier.simplify(geometry, value);
-            if(!simplify.isValid()){
-                simplify = geometry;
-            }
             sourceSimpl.put(s, simplify);
         });
         targetData.forEach((s, geometry) -> {
             Geometry simplify = TopologyPreservingSimplifier.simplify(geometry, value);
-            if(!simplify.isValid()){
-                simplify = geometry;
-            }
             targetSimpl.put(s, simplify);
         });
         long duration = System.currentTimeMillis() - time;

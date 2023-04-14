@@ -1,4 +1,4 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.splitcontentmeasuretest;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.cobalt_split;
 
 import org.locationtech.jts.geom.*;
 
@@ -55,7 +55,6 @@ public abstract class AbstractSplitter implements Splitter{
             };
             return split;
         } catch (TopologyException e) {
-            //TODO some geos have non-noded intersections between them and the left and right part of their envelope
             e.printStackTrace();
             return empty2x2Geo;
         }
@@ -412,15 +411,6 @@ public abstract class AbstractSplitter implements Splitter{
         }
     }
 
-
-    //TODO if the line splits polygons into multiple parts, create a multipolygon instead
-    //problem: How to determine what is inside and what is outside the ring
-    //Sort by height at x split contact
-    //0+1: Split line is part of result
-    //1+2:
-    //  if this is the side with other nodes between 1+2: add as connection between 1 and 2
-    //  if this is the side with no nodes in between -> split into multipolygon
-
     public List<LinearRing>[] splitRingLeftRight(double splitX, Coordinate[] exteriorRingCoordinates) {
         ArrayList<Coordinate> leftRing = new ArrayList<>();
         ArrayList<Coordinate> rightRing = new ArrayList<>();
@@ -703,7 +693,7 @@ public abstract class AbstractSplitter implements Splitter{
             }
             boolean snap = false;
             Coordinate lastCoord = null;
-            for (Coordinate c : map.keySet()) { //When snapping and last is from same list as currentD: Make new linestring; ELSE: Combine the two lists
+            for (Coordinate c : map.keySet()) {
                 if (!snap) {
                     snap = true;
                 } else {
@@ -769,7 +759,7 @@ public abstract class AbstractSplitter implements Splitter{
             }
             boolean snap = false;
             Coordinate lastCoord = null;
-            for (Coordinate c : map.keySet()) { //When snapping and last is from same list as currentD: Make new linestring; ELSE: Combine the two lists
+            for (Coordinate c : map.keySet()) {
                 if (!snap) {
                     snap = true;
                 } else {

@@ -47,7 +47,6 @@ public class AbstractRTreeIndexing implements Indexing{
             if (numThreads > 1) {
                 HashSet<String> value = new HashSet<>();
                 results.put(uri, value);
-                String finalRelation = relation;
 
                 RTree finalRTree = rTree;
                 exec.submit(() -> {
@@ -56,7 +55,7 @@ public class AbstractRTreeIndexing implements Indexing{
                             .filter(x -> {
                                         Envelope abb = x.getEnvelope();
                                         Envelope bbb = envelope;
-                                        return relater.relate(abb, bbb, finalRelation);
+                                        return relater.relate(abb, bbb, relation);
                                     }
                             ).forEach(x -> value.add(x.getUri()));
                     if(relation.equals(DISJOINT)){
@@ -64,19 +63,17 @@ public class AbstractRTreeIndexing implements Indexing{
                     }
                 });
             } else {
-                String finalRelation = relation;
-                AMapping finalM = m;
                 List<RTree.Entry> search = rTree.search(envelope);
 
                 search.stream()
                         .filter(x -> {
                                     Envelope abb = x.getEnvelope();
                                     Envelope bbb = envelope;
-                                    return relater.relate(abb, bbb, finalRelation);
+                                    return relater.relate(abb, bbb, relation);
                                 }
-                        ).forEach(x -> finalM.add(x.getUri(), uri, 1.0));
+                        ).forEach(x -> m.add(x.getUri(), uri, 1.0));
                 if(relation.equals(DISJOINT)){
-                    rTree.searchExcept(envelope).stream().map(RTree.Entry::getUri).forEach(sourceUri -> finalM.add(sourceUri, uri, 1.0));
+                    rTree.searchExcept(envelope).stream().map(RTree.Entry::getUri).forEach(sourceUri -> m.add(sourceUri, uri, 1.0));
                 }
             }
         }

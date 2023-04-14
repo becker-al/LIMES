@@ -1,15 +1,15 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.splitcontentmeasuretest;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.cobalt_split;
 
 import org.locationtech.jts.geom.*;
 
-public class EqualSplitterSlow implements Splitter {
+public class FittingSplitterSlow implements Splitter{
 
     private GeometryFactory factory = new GeometryFactory();
 
     private Geometry emptyGeo;
     private Geometry[][] empty2x2Geo;
 
-    public EqualSplitterSlow() {
+    public FittingSplitterSlow() {
         this.emptyGeo = factory.createPolygon();
         this.empty2x2Geo = new Geometry[][]{
                 new Geometry[]{
@@ -38,16 +38,13 @@ public class EqualSplitterSlow implements Splitter {
         double diffY = endY - startY;
 
         for (int splitIteration = 1; splitIteration <= times; splitIteration++) {
-            double stepX = diffX / Math.pow(2, splitIteration);
-            double stepY = diffY / Math.pow(2, splitIteration);
-
             Geometry[][] temp = new Geometry[splitGeo.length * 2][];
             for (int i = 0; i < splitGeo.length; i++) {
                 temp[i * 2] = new Geometry[splitGeo[i].length * 2];
                 temp[i * 2 + 1] = new Geometry[splitGeo[i].length * 2];
 
                 for (int j = 0; j < splitGeo[i].length; j++) {
-                    Geometry[][] partSplit = getSplitGeo(splitGeo[i][j], startX, stepX, endX, startY, stepY, endY);
+                    Geometry[][] partSplit = getSplitGeo(splitGeo[i][j]);
                     temp[i * 2][j * 2] = partSplit[0][0];
                     temp[i * 2 + 1][j * 2] = partSplit[1][0];
                     temp[i * 2][j * 2 + 1] = partSplit[0][1];
@@ -71,22 +68,23 @@ public class EqualSplitterSlow implements Splitter {
         }
         return split;
     }
-
-    //TODO: Splitting is uneven. It should instead be a grid pattern, but at the moment it is not
-    public Geometry[][] getSplitGeo(Geometry geo, double startX, double stepX, double endX, double startY, double stepY, double endY) {
+    private Geometry[][] getSplitGeo(Geometry geo) {
         if (geo.isEmpty()) {
             return empty2x2Geo;
         }
+        Envelope envelope = geo.getEnvelopeInternal();
+        double midX = envelope.getMinX() + (envelope.getMaxX() - envelope.getMinX()) / 2;
+        double midY = envelope.getMinY() + (envelope.getMaxY() - envelope.getMinY()) / 2;
 
-        Envelope left = new Envelope(startX, startX + stepX, startY, endY);
-        Envelope right = new Envelope(startX + stepX, endX, startY, endY);
+        Envelope left = new Envelope(envelope.getMinX(), midX, envelope.getMinY(), envelope.getMaxY());
+        Envelope right = new Envelope(midX, envelope.getMaxX(), envelope.getMinY(), envelope.getMaxY());
+        
+        Envelope bottomLeft = new Envelope(envelope.getMinX(), midX, envelope.getMinY(), midY);
+        Envelope bottomRight = new Envelope(midX, envelope.getMaxX(), envelope.getMinY(), midY);
+        Envelope topLeft = new Envelope(envelope.getMinX(), midX, midY, envelope.getMaxY());
+        Envelope topRight = new Envelope(midX, envelope.getMaxX(), midY, envelope.getMaxY());
 
-        Envelope bottomLeft = new Envelope(startX, startX + stepX, startY, startY + stepY);
-        Envelope bottomRight = new Envelope(startX + stepX, endX, startY, startY + stepY);
-        Envelope topLeft = new Envelope(startX, startX + stepX, startY + stepY, endY);
-        Envelope topRight = new Envelope(startX + stepX, endX, startY + stepY, endY);
-
-        try {
+        try{
             Geometry geoLeft = geo.intersection(factory.createPolygon(new Coordinate[]{
                     new Coordinate(left.getMinX(), left.getMinY()),
                     new Coordinate(left.getMinX(), left.getMaxY()),

@@ -1,4 +1,4 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.splitcontentmeasuretest;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.cobalt_split;
 
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;

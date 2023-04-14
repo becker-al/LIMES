@@ -6,17 +6,27 @@ import org.aksw.limes.core.exceptions.InvalidThresholdException;
 import org.aksw.limes.core.io.cache.ACache;
 import org.aksw.limes.core.io.mapping.AMapping;
 import org.aksw.limes.core.measures.mapper.pointsets.PropertyFetcher;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.*;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.*;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.cobalt_split.EqualSplitterFast;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.cobalt_split.FittingSplitterFast;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.cobalt_split.Quadsplit;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.AbstractRTreeIndexing;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.AbstractRTreeMatchingIndexing;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.RadonIndexingMBB;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.HilbertRTree;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeSmallestX;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeOMT;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeSTR;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.FAMatcher;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.FDMatcher;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.FMMatcher;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.Matcher;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.splitcontentmeasuretest.EqualSplitterSlow;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.splitcontentmeasuretest.FittingSplitterSlow;
-import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.splitcontentmeasuretest.Quadsplit;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.wrapper.CombinedFullGeoMapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.wrapper.CombinedGeoMapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.wrapper.RTreeIndexingFull;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.giant.batchAlgorithms.GiantMBBWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.giant.batchAlgorithms.GiantWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.radon.RadonOnlyMBBWrapper;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.radon.RadonSimplifiedWrapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.radon.RadonWrapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.evaluation.rstar.RStarTreeIndexing;
 import org.locationtech.jts.geom.Geometry;
@@ -46,8 +56,8 @@ public class Benchmark {
             //INTERSECTS, TOUCHES
             //CONTAINS, COVERS, COVEREDBY,
             //OVERLAPS
-            //EQUALS, INTERSECTS, CONTAINS, OVERLAPS, TOUCHES // <----------
-            EQUALS, INTERSECTS, CONTAINS, WITHIN, OVERLAPS, TOUCHES
+            //EQUALS, INTERSECTS, CONTAINS, OVERLAPS, TOUCHES
+            EQUALS, INTERSECTS, CONTAINS, WITHIN, OVERLAPS, TOUCHES // <----------
             //EQUALS
             //CONTAINS
             //TOUCHES
@@ -58,7 +68,7 @@ public class Benchmark {
 
     public static void main(String[] args) throws ParseException, IOException {
         //test("P:\\Cloud\\Studium\\22_Bachelorarbeit\\GeoConverter\\", "NUTS", "NUTS", 1, "a.out");
-        test("P:\\Cloud\\Studium\\22_Bachelorarbeit\\GeoConverter\\", "CLC_Split_100000_0", "NUTS", 1, "a.out");
+        test("P:\\Cloud\\Studium\\22_Bachelorarbeit\\GeoConverter\\", "NUTS", "NUTS", 1, "b.out");
     }
 
     public static void test(String baseDirectory, String sourceName, String targetName, int numThreads, String outputFile) throws ParseException, IOException {
@@ -68,7 +78,7 @@ public class Benchmark {
         Map<String, GeoMapper> geoMapperMap = new LinkedHashMap<>();
         geoMapperMap.put("RADON", new RadonWrapper());
 
-        /*
+
         geoMapperMap.put("RADON_MBB", new RadonOnlyMBBWrapper());
         geoMapperMap.put("GIANT", new GiantWrapper());
         geoMapperMap.put("GIANT_MBB", new GiantMBBWrapper());
@@ -77,10 +87,7 @@ public class Benchmark {
         for (double value : simplValues) {
             geoMapperMap.put("RADON_SIMPLIFIED_" + value, new RadonSimplifiedWrapper(value));
         }
-        */
-        //geoMapperMap.put("FA", new CAWrapper());
-        //geoMapperMap.put("FD", new CDWrapper());
-        //geoMapperMap.put("FM", new CMWrapper());
+
 
         int[] capacities = new int[]{4, 8, 16, 32, 64, 128, 256};
         Map<String, Matcher> cobaltMatcher = new TreeMap<>();
@@ -93,11 +100,11 @@ public class Benchmark {
         }
         for (int capacity : capacities) {
             for (Map.Entry<String, Matcher> matcherEntry : cobaltMatcher.entrySet()) {
-                geoMapperMap.put("RTreeNearestX-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeIndexing(() -> new RTreeNearestX(capacity)), matcherEntry.getValue()));
+                geoMapperMap.put("RTreeSmallestX-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeIndexing(() -> new RTreeSmallestX(capacity)), matcherEntry.getValue()));
                 geoMapperMap.put("RTreeSTR-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeIndexing(() -> new RTreeSTR(capacity)), matcherEntry.getValue()));
                 geoMapperMap.put("RTreeOMT-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeIndexing(() -> new RTreeOMT(capacity)), matcherEntry.getValue()));
                 geoMapperMap.put("HilbertPack-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeIndexing(() -> new HilbertRTree(capacity)), matcherEntry.getValue()));
-                geoMapperMap.put("MatchRTreeNearestX-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeMatchingIndexing(() -> new RTreeNearestX(capacity)), matcherEntry.getValue()));
+                geoMapperMap.put("MatchRTreeSmallestX-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeMatchingIndexing(() -> new RTreeSmallestX(capacity)), matcherEntry.getValue()));
                 geoMapperMap.put("MatchRTreeSTR-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeMatchingIndexing(() -> new RTreeSTR(capacity)), matcherEntry.getValue()));
                 geoMapperMap.put("MatchRTreeOTM-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeMatchingIndexing(() -> new RTreeOMT(capacity)), matcherEntry.getValue()));
                 geoMapperMap.put("MatchHilbertPack-" + capacity + "-" + matcherEntry.getKey(), new CombinedGeoMapper(new AbstractRTreeMatchingIndexing(() -> new HilbertRTree(capacity)), matcherEntry.getValue()));
@@ -105,18 +112,19 @@ public class Benchmark {
             }
         }
 
-        //for (Map.Entry<String, Matcher> matcherEntry : cobaltMatcher.entrySet()) {
-        //    for (int i = 0; i <= 4; i++) {
-        //        geoMapperMap.put("FittingQuadsplit-" + i + "-" + matcherEntry.getKey(), new CombinedFullGeoMapper(new RTreeIndexingFull(), new Quadsplit(i, new FittingSplitterSlow(), matcherEntry.getValue())));
-        //    }
-        //    for (int i = 0; i <= 4; i++) {
-        //        geoMapperMap.put("EqualQuadsplit-" + i + "-" + matcherEntry.getKey(), new CombinedFullGeoMapper(new RTreeIndexingFull(), new Quadsplit(i, new EqualSplitterSlow(), matcherEntry.getValue())));
-        //    }
-        //}
+
+
+        for (Map.Entry<String, Matcher> matcherEntry : cobaltMatcher.entrySet()) {
+            for (int i = 0; i <= 4; i++) {
+                geoMapperMap.put("FittingQuadsplitFast-" + i + "-" + matcherEntry.getKey(), new CombinedFullGeoMapper(new RTreeIndexingFull(), new Quadsplit(i, new FittingSplitterFast(), matcherEntry.getValue())));
+            }
+            for (int i = 0; i <= 4; i++) {
+                geoMapperMap.put("EqualQuadsplitFast-" + i + "-" + matcherEntry.getKey(), new CombinedFullGeoMapper(new RTreeIndexingFull(), new Quadsplit(i, new EqualSplitterFast(), matcherEntry.getValue())));
+            }
+        }
 
 
 
-        //geoMapperMap.put("RTREE_FULL", new IM_RTreeWrapper());
 
 
         List<String> results = new ArrayList<>();
@@ -134,16 +142,6 @@ public class Benchmark {
         }
         Map<String, Geometry> sourceMap = createSourceMap(sourceWithoutSimplification, expression, 1.0);
         Map<String, Geometry> targetMap = createTargetMap(targetWithoutSimplification, expression, 1.0);
-
-        //String auri = "file:///P:/Cloud/Studium/22_Bachelorarbeit/LIMES/nuts/3/DE91C";
-        //Geometry a = sourceMap.get(auri);
-        //sourceMap = new HashMap<>();
-        //sourceMap.put(auri, a);
-
-        //String buri = "file:///P:/Cloud/Studium/22_Bachelorarbeit/LIMES/nuts/3/DE918";
-        //Geometry v = targetMap.get(buri);
-        //targetMap = new HashMap<>();
-        //targetMap.put(buri, v);
 
         results.add(relation + ",AlgoName,F,Time,Precision,Recall,TruePositive,FalsePositive,TrueNegative,FalseNegative,,Positive,Negative"); //FScore, TruePositive,FalsePositive,TrueNegative,FalseNegative
 

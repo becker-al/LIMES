@@ -1,11 +1,10 @@
-package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.splitcontentmeasuretest;
+package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.cobalt_split;
 
-import org.locationtech.jts.geom.Envelope;
-import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.*;
 
-public class FittingSplitterFast extends AbstractSplitter {
+public class EqualSplitterFast extends AbstractSplitter {
 
-    public FittingSplitterFast() {
+    public EqualSplitterFast() {
         super();
     }
 
@@ -26,16 +25,16 @@ public class FittingSplitterFast extends AbstractSplitter {
         double diffY = endY - startY;
 
         for (int splitIteration = 1; splitIteration <= times; splitIteration++) {
+            double stepX = diffX / Math.pow(2, splitIteration);
+            double stepY = diffY / Math.pow(2, splitIteration);
+
             Geometry[][] temp = new Geometry[splitGeo.length * 2][];
             for (int i = 0; i < splitGeo.length; i++) {
                 temp[i * 2] = new Geometry[splitGeo[i].length * 2];
                 temp[i * 2 + 1] = new Geometry[splitGeo[i].length * 2];
 
                 for (int j = 0; j < splitGeo[i].length; j++) {
-                    Envelope splitEnv = splitGeo[i][j].getEnvelopeInternal();
-                    double midX = splitEnv.getMinX() + (splitEnv.getMaxX() - splitEnv.getMinX()) / 2;
-                    double midY = splitEnv.getMinY() + (splitEnv.getMaxY() - splitEnv.getMinY()) / 2;
-                    Geometry[][] partSplit = getSplitGeo(splitGeo[i][j], midX, midY);
+                    Geometry[][] partSplit = getSplitGeo(splitGeo[i][j], startX + stepX, startY + stepY);
 
                     temp[i * 2][j * 2] = partSplit[0][0];
                     temp[i * 2 + 1][j * 2] = partSplit[1][0];
