@@ -42,7 +42,7 @@ public class Benchmark {
     public static final String DISJOINT = "disjoint";
     public static final String INTERSECTS = "intersects";
     public static final String TOUCHES = "touches";
-    //public static final String CROSSES = "crosses"; //Crosses is not defined by godoy
+    //public static final String CROSSES = "crosses"; //Crosses is not defined by Content Measures
     public static final String WITHIN = "within";
     public static final String CONTAINS = "contains";
     public static final String OVERLAPS = "overlaps";
@@ -50,18 +50,7 @@ public class Benchmark {
     public static final String COVEREDBY = "coveredby";
 
     public static final String[] RELATIONS = new String[]{
-            //EQUALS,
-            //INTERSECTS, TOUCHES
-            //CONTAINS, COVERS, COVEREDBY,
-            //OVERLAPS
-            //EQUALS, INTERSECTS, CONTAINS, OVERLAPS, TOUCHES
-            EQUALS, INTERSECTS, CONTAINS, WITHIN, OVERLAPS, TOUCHES // <----------
-            //EQUALS
-            //CONTAINS
-            //TOUCHES
-            //WITHIN
-            //OVERLAPS
-            //EQUALS, INTERSECTS, TOUCHES, WITHIN
+            EQUALS, INTERSECTS, CONTAINS, WITHIN, OVERLAPS, TOUCHES
     };
 
     public static void main(String[] args) throws ParseException, IOException {
@@ -73,9 +62,6 @@ public class Benchmark {
 
         Map<String, GeoMapper> geoMapperMap = new LinkedHashMap<>();
         geoMapperMap.put("RADON", new RadonWrapper());
-
-
-
         geoMapperMap.put("RADON_MBB", new RadonOnlyMBBWrapper());
         geoMapperMap.put("GIANT", new GiantWrapper());
         geoMapperMap.put("GIANT_MBB", new GiantMBBWrapper());
