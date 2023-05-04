@@ -24,16 +24,16 @@ public class RTreeSTR extends AbstractRTree {
     private static AbstractRTree buildSTRRec(List<AbstractRTree> entries, int capacity) {
         int requiredNodeAmount = (int) Math.ceil((0.0 + entries.size()) / capacity);
 
-        if(requiredNodeAmount == 0){
+        if (requiredNodeAmount == 0) {
             return createStaticLeaf(null); //Empty RTree
         }
-        if(requiredNodeAmount == 1){
+        if (requiredNodeAmount == 1) {
             return createStaticParent(entries, capacity); //Create the root
         }
 
         int sliceAmount = (int) Math.ceil(Math.sqrt(requiredNodeAmount));
         int entriesPerSlice = (int) Math.ceil((0.0 + entries.size()) / sliceAmount);
-        int nodesPerSlice = (int) Math.ceil((0.0 +entriesPerSlice) / capacity);
+        int nodesPerSlice = (int) Math.ceil((0.0 + entriesPerSlice) / capacity);
 
         List<AbstractRTree> nodes = new ArrayList<>(requiredNodeAmount);
 
@@ -43,7 +43,7 @@ public class RTreeSTR extends AbstractRTree {
             sliceEntries.sort(Comparator.comparingDouble(o -> o.boundary.getMinY() + o.boundary.getMaxY()));
             for (int j = 0; j < nodesPerSlice; j++) {
                 List<AbstractRTree> nodeEntries = sliceEntries.subList(Math.min(j * capacity, sliceEntries.size()), Math.min((j + 1) * capacity, sliceEntries.size()));
-                if(!nodeEntries.isEmpty()){
+                if (!nodeEntries.isEmpty()) {
                     nodes.add(createStaticParent(nodeEntries, capacity));
                 }
             }

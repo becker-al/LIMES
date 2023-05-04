@@ -14,11 +14,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class AbstractRTreeMatchingIndexing implements Indexing{
+public class AbstractRTreeMatchingIndexing implements Indexing {
 
     private Callable<RTree> treeBuilder;
 
-    public AbstractRTreeMatchingIndexing(Callable <RTree> treeBuilder) {
+    public AbstractRTreeMatchingIndexing(Callable<RTree> treeBuilder) {
         this.treeBuilder = treeBuilder;
     }
 

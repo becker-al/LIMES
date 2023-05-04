@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class Quadsplit implements MatcherFull {
+public class CobaltSplit implements MatcherFull {
 
     private Map<String, Envelope[][]> splitA = new ConcurrentHashMap<>();
     private Map<String, Envelope[][]> splitB = new ConcurrentHashMap<>();
@@ -21,7 +21,7 @@ public class Quadsplit implements MatcherFull {
     private Matcher matcher;
 
 
-    public Quadsplit(int splitTimes, Splitter splitter, Matcher matcher) {
+    public CobaltSplit(int splitTimes, Splitter splitter, Matcher matcher) {
         this.splitTimes = splitTimes;
         this.splitter = splitter;
         this.matcher = matcher;
@@ -162,7 +162,7 @@ public class Quadsplit implements MatcherFull {
                                 Envelope eA = splitA[i1][j1];
                                 Envelope eB = splitB[i2][j2];
                                 if (!eA.isNull() && !eB.isNull() &&
-                                        matcher.relate(eA, eB, CONTAINS)
+                                        matcher.relate(eA, eB, CONTAINS) //Contains also captures equals
                                         || matcher.relate(eA, eB, WITHIN)
                                         || matcher.relate(eA, eB, OVERLAPS)
                                 ) {

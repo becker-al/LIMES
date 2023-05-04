@@ -3,9 +3,9 @@ package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithm
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 
-public class FittingSplitterFast extends AbstractSplitter {
+public class FittingSplitter extends AbstractSplitter {
 
-    public FittingSplitterFast() {
+    public FittingSplitter() {
         super();
     }
 

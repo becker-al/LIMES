@@ -17,17 +17,15 @@ public class RTreeSmallestX extends AbstractRTree {
     }
 
     public AbstractRTree buildNearestX(List<Entry> entries) {
-        List<AbstractRTree> bottomLayerNodes = entries.stream().map(AbstractRTree::createStaticLeaf)
-                .sorted(Comparator.comparingDouble(o -> o.getContent().getEnvelope().centre().getX()))
-                .collect(Collectors.toList());
+        List<AbstractRTree> bottomLayerNodes = entries.stream().map(AbstractRTree::createStaticLeaf).sorted(Comparator.comparingDouble(o -> o.getContent().getEnvelope().centre().getX())).collect(Collectors.toList());
         return buildNearestX(bottomLayerNodes, capacity);
     }
 
     private AbstractRTree buildNearestX(List<AbstractRTree> entries, int capacity) {
-        if(capacity >= entries.size()){
+        if (capacity >= entries.size()) {
             return createStaticParent(entries, capacity);
         }
-        if(entries.size() == 0){
+        if (entries.size() == 0) {
             return new RTreeSmallestX();
         }
 
@@ -40,13 +38,13 @@ public class RTreeSmallestX extends AbstractRTree {
             List<AbstractRTree> split = new ArrayList<>();
             for (int j = 0; j < splitSize; j++) {
                 int index = i * splitSize + j;
-                if(index < entries.size()){
+                if (index < entries.size()) {
                     split.add(entries.get(index));
                 }
             }
             children.add(buildNearestX(split, capacity));
         }
-        return createStaticParent(children,capacity);
+        return createStaticParent(children, capacity);
     }
 
     @Override

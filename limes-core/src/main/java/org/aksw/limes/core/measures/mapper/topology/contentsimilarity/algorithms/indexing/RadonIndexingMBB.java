@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 
 /**
  * Most parts of this class are taken from RADON / kdressler
+ *
  * @see org.aksw.limes.core.measures.mapper.topology.RADON
  */
 public class RadonIndexingMBB implements Indexing {
@@ -366,15 +367,14 @@ public class RadonIndexingMBB implements Indexing {
                                 computed.get(a.uri).add(b.uri);
                                 //                                //System.out.println(" the new relation is: "+rel);
                                 boolean compute = a.envelope.intersects(b.envelope)
-                                        &&(rel.equals(COVERS) && a.covers(b)
+                                        && (rel.equals(COVERS) && a.covers(b)
                                         || (rel.equals(COVEREDBY) && b.covers(a))
                                         || (rel.equals(CONTAINS) && a.contains(b))
                                         || (rel.equals(WITHIN) && b.contains(a)) || (rel.equals(EQUALS) && a.equals(b))
                                         || rel.equals(INTERSECTS) || rel.equals(TOUCHES)
-                                        || rel.equals(OVERLAPS))
-                                 ;
+                                        || rel.equals(OVERLAPS));
 
-                                if(compute){
+                                if (compute) {
                                     if (numThreads == 1) {
                                         if (radonMatcher.relate(a.envelope, b.envelope, rel)) {
                                             if (swapped)

@@ -26,6 +26,7 @@ public abstract class AbstractRTree implements RTree {
     public boolean isLeaf() {
         return leaf;
     }
+
     public Envelope getBoundary() {
         return boundary;
     }
@@ -37,7 +38,8 @@ public abstract class AbstractRTree implements RTree {
     public Entry getContent() {
         return content;
     }
-    protected void recalculateBoundary(){
+
+    protected void recalculateBoundary() {
         double minX = Double.POSITIVE_INFINITY;
         double minY = Double.POSITIVE_INFINITY;
         double maxX = Double.NEGATIVE_INFINITY;
@@ -116,7 +118,7 @@ public abstract class AbstractRTree implements RTree {
         for (AbstractRTree child : children) {
             if (child.boundary.getMinX() != Double.POSITIVE_INFINITY) {
                 tree.children.add(child);
-            }else{
+            } else {
                 throw new RuntimeException("");
             }
         }
@@ -132,7 +134,7 @@ public abstract class AbstractRTree implements RTree {
         return tree;
     }
 
-    protected void takeValues(AbstractRTree other){
+    protected void takeValues(AbstractRTree other) {
         leaf = other.leaf;
         boundary = other.boundary;
         children = other.children;

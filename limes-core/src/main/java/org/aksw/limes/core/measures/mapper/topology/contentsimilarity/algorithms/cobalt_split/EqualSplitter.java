@@ -2,9 +2,9 @@ package org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithm
 
 import org.locationtech.jts.geom.*;
 
-public class EqualSplitterFast extends AbstractSplitter {
+public class EqualSplitter extends AbstractSplitter {
 
-    public EqualSplitterFast() {
+    public EqualSplitter() {
         super();
     }
 

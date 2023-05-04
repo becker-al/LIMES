@@ -5,7 +5,7 @@ import org.locationtech.jts.geom.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public abstract class AbstractSplitter implements Splitter{
+public abstract class AbstractSplitter implements Splitter {
 
     public GeometryFactory factory = new GeometryFactory();
 
@@ -133,12 +133,12 @@ public abstract class AbstractSplitter implements Splitter{
 
         if (polygonsLeft.size() > 0) {
             poly1 = factory.createMultiPolygon(polygonsLeft.toArray(Polygon[]::new));
-        }else{
+        } else {
             poly1 = factory.createMultiPolygon();
         }
         if (polygonsRight.size() > 0) {
             poly2 = factory.createMultiPolygon(polygonsRight.toArray(Polygon[]::new));
-        }else{
+        } else {
             poly2 = factory.createMultiPolygon();
         }
         return new MultiPolygon[]{poly1, poly2};
@@ -162,12 +162,12 @@ public abstract class AbstractSplitter implements Splitter{
 
         if (polygonsDown.size() > 0) {
             poly1 = factory.createMultiPolygon(polygonsDown.toArray(Polygon[]::new));
-        }else{
+        } else {
             poly1 = factory.createMultiPolygon();
         }
         if (polygonsUp.size() > 0) {
             poly2 = factory.createMultiPolygon(polygonsUp.toArray(Polygon[]::new));
-        }else{
+        } else {
             poly2 = factory.createMultiPolygon();
         }
         return new MultiPolygon[]{poly1, poly2};
@@ -293,12 +293,12 @@ public abstract class AbstractSplitter implements Splitter{
                             if (coordinate.getY() == exteriorTop.getY()) { //start with the top part of the hole
                                 combinedResultRingCoordinates[index] = holeTopCoord;
                                 index++;
-                                if(holeRing.getCoordinates()[0] == holeTopCoord){
+                                if (holeRing.getCoordinates()[0] == holeTopCoord) {
                                     for (int k = 1; k < holeRing.getCoordinates().length - 2; k++) {
                                         combinedResultRingCoordinates[index] = holeRing.getCoordinates()[k];
                                         index++;
                                     }
-                                }else{
+                                } else {
                                     for (int k = holeRing.getCoordinates().length - 3; k >= 1; k--) {
                                         combinedResultRingCoordinates[index] = holeRing.getCoordinates()[k];
                                         index++;
@@ -309,12 +309,12 @@ public abstract class AbstractSplitter implements Splitter{
                             } else { //start from bottom
                                 combinedResultRingCoordinates[index] = holeBottomCoord;
                                 index++;
-                                if(holeRing.getCoordinates()[0] == holeBottomCoord){
+                                if (holeRing.getCoordinates()[0] == holeBottomCoord) {
                                     for (int k = 1; k < holeRing.getCoordinates().length - 2; k++) {
                                         combinedResultRingCoordinates[index] = holeRing.getCoordinates()[k];
                                         index++;
                                     }
-                                }else{
+                                } else {
                                     for (int k = holeRing.getCoordinates().length - 3; k >= 1; k--) {
                                         combinedResultRingCoordinates[index] = holeRing.getCoordinates()[k];
                                         index++;
@@ -368,12 +368,12 @@ public abstract class AbstractSplitter implements Splitter{
                             if (coordinate.getX() == exteriorRight.getX()) { //start with the top part of the hole
                                 combinedResultRingCoordinates[index] = holeRightCoord;
                                 index++;
-                                if(holeRing.getCoordinates()[0] == holeRightCoord){
+                                if (holeRing.getCoordinates()[0] == holeRightCoord) {
                                     for (int k = 1; k < holeRing.getCoordinates().length - 2; k++) {
                                         combinedResultRingCoordinates[index] = holeRing.getCoordinates()[k];
                                         index++;
                                     }
-                                }else{
+                                } else {
                                     for (int k = holeRing.getCoordinates().length - 3; k >= 1; k--) {
                                         combinedResultRingCoordinates[index] = holeRing.getCoordinates()[k];
                                         index++;
@@ -384,12 +384,12 @@ public abstract class AbstractSplitter implements Splitter{
                             } else { //start from bottom
                                 combinedResultRingCoordinates[index] = holeLeftCoord;
                                 index++;
-                                if(holeRing.getCoordinates()[0] == holeLeftCoord){
+                                if (holeRing.getCoordinates()[0] == holeLeftCoord) {
                                     for (int k = 1; k < holeRing.getCoordinates().length - 2; k++) {
                                         combinedResultRingCoordinates[index] = holeRing.getCoordinates()[k];
                                         index++;
                                     }
-                                }else{
+                                } else {
                                     for (int k = holeRing.getCoordinates().length - 3; k >= 1; k--) {
                                         combinedResultRingCoordinates[index] = holeRing.getCoordinates()[k];
                                         index++;
@@ -512,19 +512,20 @@ public abstract class AbstractSplitter implements Splitter{
         startRing.addAll(lastRing);
         int max = startRing.size();
         while (!(startRing.get(0).x == splitX && startRing.get(startRing.size() - 1).x == splitX)) {
-            if(max-- == 0){ //Fix double precision errors
+            if (max-- == 0) { //Fix double precision errors
                 Map<Double, List<Integer>> closestIndex = new TreeMap<>(Double::compareTo);
                 for (int i = 0; i < startRing.size(); i++) {
                     double diff = Math.abs(startRing.get(i).x - splitX);
-                    if(!closestIndex.containsKey(diff)){
+                    if (!closestIndex.containsKey(diff)) {
                         closestIndex.put(diff, new ArrayList<>());
                     }
                     closestIndex.get(diff).add(i);
                 }
                 int count = 0;
-                outer: for (Double aDouble : closestIndex.keySet()) {
+                outer:
+                for (Double aDouble : closestIndex.keySet()) {
                     for (Integer index : closestIndex.get(aDouble)) {
-                        if(count++ == 2){
+                        if (count++ == 2) {
                             break outer;
                         }
                         startRing.set(index, new Coordinate(splitX, startRing.get(index).getY()));
@@ -542,19 +543,20 @@ public abstract class AbstractSplitter implements Splitter{
         startRing.addAll(lastRing);
         int max = startRing.size();
         while (!(startRing.get(0).y == splitY && startRing.get(startRing.size() - 1).y == splitY)) {
-            if(max-- == 0){ //Fix double precision errors
+            if (max-- == 0) { //Fix double precision errors
                 Map<Double, List<Integer>> closestIndex = new TreeMap<>(Double::compareTo);
                 for (int i = 0; i < startRing.size(); i++) {
                     double diff = Math.abs(startRing.get(i).y - splitY);
-                    if(!closestIndex.containsKey(diff)){
+                    if (!closestIndex.containsKey(diff)) {
                         closestIndex.put(diff, new ArrayList<>());
                     }
                     closestIndex.get(diff).add(i);
                 }
                 int count = 0;
-                outer: for (Double aDouble : closestIndex.keySet()) {
+                outer:
+                for (Double aDouble : closestIndex.keySet()) {
                     for (Integer index : closestIndex.get(aDouble)) {
-                        if(count++ == 2){
+                        if (count++ == 2) {
                             break outer;
                         }
                         startRing.set(index, new Coordinate(startRing.get(index).getX(), splitY));
@@ -666,7 +668,7 @@ public abstract class AbstractSplitter implements Splitter{
         for (int i = 0; i < downRings.size(); i++) {
             List<Coordinate> coordinates = downRings.get(i);
             for (int j = 0; j < coordinates.size() - 2; j++) {
-                if(coordinates.get(j).equals(coordinates.get(j+1))){
+                if (coordinates.get(j).equals(coordinates.get(j + 1))) {
                     coordinates.remove(j);
                     j--;
                 }
@@ -736,7 +738,7 @@ public abstract class AbstractSplitter implements Splitter{
 
         return result.stream()
                 .filter(coordinates -> coordinates.stream().noneMatch(coordinate -> Double.isNaN(coordinate.x) || Double.isNaN(coordinate.y)))
-                .filter(coordinates -> coordinates.size() >=4)
+                .filter(coordinates -> coordinates.size() >= 4)
                 .map(coordinates -> factory.createLinearRing(coordinates.toArray(Coordinate[]::new)))
                 .collect(Collectors.toList());
     }
@@ -800,7 +802,7 @@ public abstract class AbstractSplitter implements Splitter{
         }
         return result.stream()
                 .filter(coordinates -> coordinates.stream().noneMatch(coordinate -> Double.isNaN(coordinate.x) || Double.isNaN(coordinate.y)))
-                .filter(coordinates -> coordinates.size() >=4)
+                .filter(coordinates -> coordinates.size() >= 4)
                 .map(coordinates -> factory.createLinearRing(coordinates.toArray(Coordinate[]::new)))
                 .collect(Collectors.toList());
     }

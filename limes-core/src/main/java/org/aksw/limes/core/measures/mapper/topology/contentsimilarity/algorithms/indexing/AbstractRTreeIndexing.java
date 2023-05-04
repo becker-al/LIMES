@@ -13,11 +13,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class AbstractRTreeIndexing implements Indexing{
+public class AbstractRTreeIndexing implements Indexing {
 
     private Callable<RTree> treeBuilder;
 
-    public AbstractRTreeIndexing(Callable <RTree> treeBuilder) {
+    public AbstractRTreeIndexing(Callable<RTree> treeBuilder) {
         this.treeBuilder = treeBuilder;
     }
 
@@ -58,7 +58,7 @@ public class AbstractRTreeIndexing implements Indexing{
                                         return relater.relate(abb, bbb, relation);
                                     }
                             ).forEach(x -> value.add(x.getUri()));
-                    if(relation.equals(DISJOINT)){
+                    if (relation.equals(DISJOINT)) {
                         value.addAll(finalRTree.searchExcept(envelope).stream().map(RTree.Entry::getUri).collect(Collectors.toList()));
                     }
                 });
@@ -72,7 +72,7 @@ public class AbstractRTreeIndexing implements Indexing{
                                     return relater.relate(abb, bbb, relation);
                                 }
                         ).forEach(x -> m.add(x.getUri(), uri, 1.0));
-                if(relation.equals(DISJOINT)){
+                if (relation.equals(DISJOINT)) {
                     rTree.searchExcept(envelope).stream().map(RTree.Entry::getUri).forEach(sourceUri -> m.add(sourceUri, uri, 1.0));
                 }
             }
