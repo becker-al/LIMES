@@ -16,7 +16,9 @@ import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeOMT;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeSTR;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.indexing.rtrees.RTreeSmallestX;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.FAMatcher;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.FDMatcher;
+import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.FMMatcher;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.matcher.Matcher;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.wrapper.CombinedFullGeoMapper;
 import org.aksw.limes.core.measures.mapper.topology.contentsimilarity.algorithms.wrapper.CombinedGeoMapper;
@@ -75,7 +77,9 @@ public class Benchmark {
         int[] capacities = new int[]{4, 8, 16, 32, 64, 128, 256};
 
         Map<String, Matcher> cobaltMatcher = new TreeMap<>();
-
+        cobaltMatcher.put("FA", new FAMatcher());
+        cobaltMatcher.put("FD", new FDMatcher());
+        cobaltMatcher.put("FM", new FMMatcher());
 
         for (Map.Entry<String, Matcher> matcherEntry : cobaltMatcher.entrySet()) {
             geoMapperMap.put("RADON-" + matcherEntry.getKey(), new CombinedGeoMapper(new RadonIndexingMBB(), matcherEntry.getValue()));
