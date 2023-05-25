@@ -1,7 +1,7 @@
 # This is an anonymous Github for our implementation of COBALT paper  
 # Cobalt: A Content-Based Similarity Approach for Link Discovery over Geospatial Knowledge Graphs
 
-The paper has been submitted to ESWC 2023 research track 
+The paper has been submitted to SEMANTiCS 2023 research track 
 
 # Please not that we started our implmentation by forking LIMES framework. Here is the link of LIMES https://github.com/dice-group/LIMES
 
